@@ -1,0 +1,8 @@
+out/
+venv/
+__pycache__/
+*.zip
+
+### IntelliJ IDEA ###
+.idea
+*.iml

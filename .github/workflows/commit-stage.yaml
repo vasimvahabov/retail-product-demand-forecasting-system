@@ -1,0 +1,41 @@
+name: Commit Stage CI/CD Pipeline
+on:
+  push:
+    branches: [ main ]
+
+env:
+  RUNTIME_ENV: CI_CD
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set Up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.13
+
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run The app
+        run: |
+          python src/main.py
+
+      - name: Commit
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions"
+
+          git checkout --orphan ci/output
+          git rm -rf .
+          git add out/
+
+          git commit -m "ci: persist generated output [skip ci]"
+          git push -u origin ci/output --force
