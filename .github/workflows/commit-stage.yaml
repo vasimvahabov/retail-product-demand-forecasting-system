@@ -36,6 +36,7 @@ jobs:
           git checkout --orphan ci/output
           git rm -rf .
           git add out/
+          git add log/
 
           git commit -m "ci: persist generated output [skip ci]"
           git push -u origin ci/output --force
