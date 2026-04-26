@@ -1,66 +1,86 @@
-# Import libraries
+"""
+Generates inventory recommendations per store using 30-day demand forecasts.
+
+Computes reorder point, safety stock, and recommended stock, then saves results.
+"""
+
+
+import os
 import logging
 import pandas as pd
 
+logger = logging.getLogger(__name__)
+
 def run(forecasts, dir_data_output):
     """
-    Optimizes inventory levels for each store based on 30-day demand forecasts.
+    Creates inventory recommendations for each store based on 30-day demand forecasts.
 
     Args:
-        forecasts (dict): Dictionary of forecasts for each store.
+        forecasts (dict): Store forecasts including 'forecast_30'.
         dir_data_output (str): Path to save inventory recommendations.
 
     Returns:
         None
     """
-    # Configure logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s'
-    )
 
     for store_id, store_forecast in forecasts.items():
-        logging.info(f"\nStarting inventory optimization for Store {store_id}...")
+        logger.info("Starting inventory optimization for Store %s...", store_id)
 
         try:
             # Extract and rename forecasted demand for the next 30 days
-            logging.info("Extracting 30-day demand forecast...")
-            forecast_30 = store_forecast['forecast_30']
-            future_demand = forecast_30.tail(30)[["ds", "yhat"]].rename(columns={
+            logger.info("Extracting 30-day demand forecast...")
+            forecast_30 = store_forecast.get("forecast_30")
+
+            # Check if next 30 Days demand forecast is None
+            if forecast_30 is None:
+                logger.warning("Store %s missing forecast_30 data!", store_id)
+                continue
+
+            future_demand = forecast_30[["ds", "yhat"]].rename(columns={
                 "ds": "Date",
                 "yhat": "Forecast_Demand"
             })
-            logging.info("\nNext 30 Days Demand Forecast:")
-            logging.info(f"\n{future_demand.head()}")
+            logger.info("Next 30 Days Demand Forecast:\n%s", future_demand.head())
 
             # Calculate average daily demand
+            future_demand["Forecast_Demand"] = pd.to_numeric(
+                future_demand["Forecast_Demand"],
+                errors="coerce"
+            )
             avg_daily_demand = future_demand["Forecast_Demand"].mean()
-            logging.info(f"\nAverage Daily Demand: {avg_daily_demand:.2f}")
+            if pd.isna(avg_daily_demand):
+                logger.warning("Store %s has invalid forecast values!", store_id)
+                continue
+            logger.info("Average Daily Demand: %.2f", avg_daily_demand)
 
             # Reorder point calculation
             lead_time_days = 7
             reorder_point = avg_daily_demand * lead_time_days
-            logging.info(f"Reorder Point: {reorder_point:.2f}")
+            logger.info("Reorder Point: %.2f", reorder_point)
 
             # Recommended stock level
             safety_stock = avg_daily_demand * 3
             recommended_stock = future_demand["Forecast_Demand"].sum() + safety_stock
-            logging.info(f"Recommended Stock Level: {recommended_stock:.2f}")
+            logger.info("Recommended Stock Level: %.2f", recommended_stock)
 
             # Save results
             inventory_output = pd.DataFrame({
-                "Product": [f"Store_{store_id}_Product"],
-                "Forecast Demand (30 Days)": [future_demand["Forecast_Demand"].sum()],
-                "Recommended Stock": [recommended_stock]
+                "store_id": [store_id],
+                "forecast_30": [future_demand["Forecast_Demand"].sum()],
+                "recommended_stock": [recommended_stock],
+                "reorder_point": [reorder_point],
+                "safety_stock": [safety_stock]
             })
-            logging.info("Writing inventory recommendation to disk...")
-            path_inventory = f"{dir_data_output}store_{store_id}_inventory_recommendation.csv"
+            logger.info("Writing inventory recommendation to disk...")
+            path_inventory = os.path.join(
+                dir_data_output,
+                f"store_{store_id}_inventory_recommendation.csv"
+            )
             inventory_output.to_csv(path_inventory, index=False)
-            logging.info(f"Inventory recommendation written to: {path_inventory}")
+            logger.info("Inventory recommendation written to %s", path_inventory)
 
-            logging.info("\nInventory Recommendation:")
-            logging.info(f"\n{inventory_output}")
+            logger.info("Inventory Recommendation:\n%s", inventory_output)
 
-        except Exception as e:
-            logging.error(f"Failed to optimize inventory for Store {store_id}: {e}", exc_info=True)
-            raise
+        except Exception:
+            logger.exception("Failed to optimize inventory for Store %s", store_id)
+            continue

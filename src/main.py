@@ -1,19 +1,42 @@
+"""
+Retail Product Demand Forecasting Sales Forecasting Dashboard (Streamlit Application)
+
+Runs ML pipeline, loads outputs, and displays store-level analytics.
+"""
+
 import os
 import streamlit as st
 import pandas as pd
 import logging
 import pipeline
+from datetime import datetime
 
-# Initialize variables
 workdir = os.getcwd()
-dir_input = f"{workdir}/data/"
-dir_output = f"{workdir}/out/"
-dir_figures = f"{dir_output}figures/"
-dir_data_output = f"{dir_output}data/"
-path_train_input = f"{dir_input}train.csv"
-path_store_input = f"{dir_input}store.csv"
 
-stores_to_use = [
+dir_log = os.path.join(workdir, "log")
+dir_input = os.path.join(workdir, "data")
+dir_output = os.path.join(workdir, "out")
+dir_figures = os.path.join(dir_output, "figures")
+dir_data_output = os.path.join(dir_output, "data")
+path_train_input = os.path.join(dir_input, "train.csv")
+path_store_input = os.path.join(dir_input, "store.csv")
+
+os.makedirs(dir_log, exist_ok=True)
+run_id = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+path_log = os.path.join(dir_log, f"{run_id}.log")
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    handlers=[
+        logging.FileHandler(path_log),
+        logging.StreamHandler()
+    ],
+    force=True
+)
+logger = logging.getLogger(__name__)
+
+stores_to_process = [
     1,
     # 3,
     # 8,
@@ -21,44 +44,62 @@ stores_to_use = [
     # 25
 ]
 
-os.makedirs(dir_output, exist_ok=True)
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
 
 @st.cache_data(show_spinner=True)
 def run_pipeline():
-    pipeline.run(path_train_input, path_store_input, dir_output, dir_data_output, dir_figures, stores_to_use)
-    return True
+    """
+    Runs ML pipeline.
 
-logging.info("Running pipeline...")
-run_pipeline()
-logging.info("Pipeline running completed!")
+    Returns:
+        bool: True if successful, False otherwise.
+    """
+
+    try:
+        logger.info("Starting pipeline execution...")
+        pipeline.run(
+            path_train_input,
+            path_store_input,
+            dir_output,
+            dir_data_output,
+            dir_figures,
+            stores_to_process
+        )
+        logger.info("Pipeline execution completed!")
+        return True
+
+    except FileNotFoundError:
+        logger.exception("Required file missing on pipeline execution!")
+        st.error("Required file missing on pipeline execution!")
+        return False
+
+    except Exception:
+        logger.exception("Pipeline execution failed!")
+        st.error("Pipeline execution failed!")
+        return False
+
+
+if not run_pipeline():
+    st.stop()
 
 runtime_env = os.getenv("RUNTIME_ENV", "LOCAL")
-logging.info(f"Runtime environment: {runtime_env}")
+logger.info("Runtime environment: %s", runtime_env)
 if runtime_env != "LOCAL":
-    exit(0)
+    logger.warning("Stopping app: runtime environment is not local (%s)", runtime_env)
+    st.stop()
 
 st.title("Retail Sales Forecasting & Inventory Optimization Dashboard")
 st.write("Explore sales trends, forecasting results, model comparison, and inventory recommendations.")
 
-# Select store to analyse
 store_options = []
-for store_id in stores_to_use:
+for store_id in stores_to_process:
     store_options.append(f"Store {store_id}")
 store_selected = st.sidebar.selectbox("Select Store", store_options)
 store_id = 1 if store_selected == "Store 1" else 3
 
-# File paths based on store selection
 sales_file = os.path.join(dir_data_output, f"store_{store_id}_cleaned.csv")
 model_file = os.path.join(dir_data_output, f"store_{store_id}_model_comparison.csv")
 inventory_file = os.path.join(dir_data_output, f"store_{store_id}_inventory_recommendation.csv")
 
-# Figures
 figures = {
     "daily_sales": os.path.join(dir_figures, f"store_{store_id}_daily_sales.png"),
     "lstm_forecast": os.path.join(dir_figures, f"store_{store_id}_lstm_forecast.png"),
@@ -68,151 +109,129 @@ figures = {
     "weekday_pattern": os.path.join(dir_figures, f"store_{store_id}_weekday_pattern.png"),
     "model_comparison": os.path.join(dir_figures, f"store_{store_id}_model_comparison.png"),
 }
-# Global figure
+
 sales_distribution_fig = os.path.join(dir_figures, "sales_distribution.png")
 
-# Load data
-try:
-    logging.info(f"Loading sales data from: {sales_file}")
-    sales_data = pd.read_csv(sales_file)
+
+def load_csv(path, name):
+    """
+    Loads a CSV file safely with logging.
+
+    Args:
+        path (str): file path
+        name (str): dataset label for logs
+
+    Returns:
+        pd.DataFrame or None if loading fails
+    """
+
+    logger.info("Loading %s from %s...", name, path)
+    try:
+        df = pd.read_csv(path)
+        logger.info("%s loaded | rows=%s!", name, len(df))
+        return df
+
+    except FileNotFoundError:
+        logger.exception("%s file not found at %s!", name, path)
+        return None
+
+    except pd.errors.EmptyDataError:
+        logger.exception("%s file is empty!", name)
+        return None
+
+    except Exception:
+        logger.exception("Failed to load %s from %s!", name, path)
+        return None
+
+
+sales_data = load_csv(sales_file, "Sales Data")
+if sales_data is None:
+    st.error("Failed to load Sales Data!")
+    st.stop()
+
+if "Date" in sales_data.columns:
     sales_data["Date"] = pd.to_datetime(sales_data["Date"])
-    logging.info("Sales data loaded successfully.")
-except Exception as e:
-    logging.error(f"Failed to load sales data: {e}", exc_info=True)
-    st.error("Failed to load sales data. Check logs for details.")
-    raise
+else:
+    st.error("Date column missing in Sales Data!")
+    st.stop()
 
-try:
-    logging.info(f"Loading model results from: {model_file}")
-    model_results = pd.read_csv(model_file)
-    logging.info("Model results loaded successfully.")
-except Exception as e:
-    logging.error(f"Failed to load model results: {e}", exc_info=True)
-    st.error("Failed to load model results. Check logs for details.")
-    raise
+model_results = load_csv(model_file, "Model Results")
+if model_results is None or model_results.empty:
+    st.error("Model results missing or empty!")
+    st.stop()
 
-try:
-    logging.info(f"Loading inventory data from: {inventory_file}")
-    inventory = pd.read_csv(inventory_file)
-    logging.info("Inventory data loaded successfully.")
-except Exception as e:
-    logging.error(f"Failed to load inventory data: {e}", exc_info=True)
-    st.error("Failed to load inventory data. Check logs for details.")
-    raise
+inventory = load_csv(inventory_file, "Inventory Data")
+if inventory is None or inventory.empty:
+    st.error("Inventory data missing or empty!")
+    st.stop()
 
-# Sidebar Navigation
+if sales_data.empty:
+    logger.warning("Sales data is empty!")
+    st.warning("No sales data available!")
+    st.stop()
+
+required_sales_cols = ["Date", "Sales"]
+for col in required_sales_cols:
+    if col not in sales_data.columns:
+        logger.exception("Missing column: %s!", col)
+        st.error(f"Missing column: {col}!")
+        st.stop()
+
 section = st.sidebar.radio(
     "Select Section",
     ["Sales Overview", "Forecast", "Model Comparison", "Inventory Recommendation"]
 )
 
-# Sales Overview
+
+def show_figure(path, name):
+    """
+    Displays an image in Streamlit if the file exists.
+
+    Args:
+        path (str): image file path
+        name (str): label for logging and UI
+    """
+
+    if os.path.exists(path):
+        logger.info("Displaying figure %s...", name)
+        st.image(path)
+    else:
+        logger.warning("%s not found at %s!", name, path)
+        st.warning(f"{name} not found at {path}")
+
+
 if section == "Sales Overview":
     st.header("Sales History")
     st.subheader("Daily Sales")
-    try:
-        if os.path.exists(figures["daily_sales"]):
-            st.image(figures["daily_sales"])
-        else:
-            st.warning("Daily sales figure not found.")
-    except Exception as e:
-        logging.error(f"Error displaying daily sales figure: {e}", exc_info=True)
-        st.error("Error displaying daily sales figure. Check logs for details.")
-        raise
-
+    show_figure(figures["daily_sales"], "Daily Sales")
     st.subheader("Monthly Sales Trend")
-    try:
-        if os.path.exists(figures["monthly_sales"]):
-            st.image(figures["monthly_sales"])
-        else:
-            st.warning("Monthly sales figure not found.")
-    except Exception as e:
-        logging.error(f"Error displaying monthly sales figure: {e}", exc_info=True)
-        st.error("Error displaying monthly sales figure. Check logs for details.")
-        raise
+
+    show_figure(figures["monthly_sales"], "Monthly Sales")
 
     st.subheader("Sales Peaks & Seasonality")
-    try:
-        if os.path.exists(figures["sales_peaks"]):
-            st.image(figures["sales_peaks"])
-        else:
-            st.warning("Sales peaks figure not found.")
-        if os.path.exists(figures["weekday_pattern"]):
-            st.image(figures["weekday_pattern"])
-        else:
-            st.warning("Weekday pattern figure not found.")
-    except Exception as e:
-        logging.error(f"Error displaying sales peaks/seasonality figures: {e}", exc_info=True)
-        st.error("Error displaying sales peaks/seasonality figures. Check logs for details.")
-        raise
+    show_figure(figures["sales_peaks"], "Sales Peaks")
+    show_figure(figures["weekday_pattern"], "Weekday Pattern")
 
     st.subheader("Overall Sales Distribution")
-    try:
-        if os.path.exists(sales_distribution_fig):
-            st.image(sales_distribution_fig)
-        else:
-            st.warning("Sales distribution figure not found.")
-    except Exception as e:
-        logging.error(f"Error displaying sales distribution figure: {e}", exc_info=True)
-        st.error("Error displaying sales distribution figure. Check logs for details.")
-        raise
+    show_figure(sales_distribution_fig, "Sales Distribution")
 
-# Forecast
 elif section == "Forecast":
     st.header("Forecasting Results")
     st.subheader("Prophet Forecast")
-    try:
-        if os.path.exists(figures["prophet_forecast"]):
-            st.image(figures["prophet_forecast"])
-        else:
-            st.warning("Prophet forecast figure not found.")
-    except Exception as e:
-        logging.error(f"Error displaying Prophet forecast figure: {e}", exc_info=True)
-        st.error("Error displaying Prophet forecast figure. Check logs for details.")
-        raise
+    show_figure(figures["prophet_forecast"], "Prophet Forecast")
 
     st.subheader("LSTM Forecast")
-    try:
-        if os.path.exists(figures["lstm_forecast"]):
-            st.image(figures["lstm_forecast"])
-        else:
-            st.warning("LSTM forecast figure not found.")
-    except Exception as e:
-        logging.error(f"Error displaying LSTM forecast figure: {e}", exc_info=True)
-        st.error("Error displaying LSTM forecast figure. Check logs for details.")
-        raise
+    show_figure(figures["lstm_forecast"], "LSTM Forecast")
 
-# Model Comparison
 elif section == "Model Comparison":
     st.header("Model Performance Comparison")
-    try:
-        st.dataframe(model_results)
-    except Exception as e:
-        logging.error(f"Error displaying model results: {e}", exc_info=True)
-        st.error("Error displaying model results. Check logs for details.")
-        raise
+    st.dataframe(model_results)
 
     st.subheader("Visual Comparison")
-    try:
-        if os.path.exists(figures["model_comparison"]):
-            st.image(figures["model_comparison"])
-        else:
-            st.warning("Model comparison figure not found.")
-    except Exception as e:
-        logging.error(f"Error displaying model comparison figure: {e}", exc_info=True)
-        st.error("Error displaying model comparison figure. Check logs for details.")
-        raise
+    show_figure(figures["model_comparison"], "Model Comparison")
 
-# Inventory Recommendation
 elif section == "Inventory Recommendation":
     st.header("Inventory Optimization")
-    try:
-        st.dataframe(inventory)
-    except Exception as e:
-        logging.error(f"Error displaying inventory data: {e}", exc_info=True)
-        st.error("Error displaying inventory data. Check logs for details.")
-        raise
-    st.success("Using demand forecasting helps reduce stockouts and overstocking.")
+    st.dataframe(inventory)
 
-# Footer
 st.sidebar.info("Retail Forecasting Project Dashboard")

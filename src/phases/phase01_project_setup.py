@@ -2,41 +2,34 @@ import os
 import shutil
 import logging
 
-def run(dir_output, dir_data_output, dir_figures):
+logger = logging.getLogger(__name__)
 
+def run(dir_output, dir_data_output, dir_figures):
     """
-    Cleans up previous output and creates necessary folders for the pipeline.
+    Prepares output directories for the pipeline.
+
+    Deletes previous outputs and recreates required folders.
 
     Args:
-        dir_output (str): Path to the main output directory.
-        dir_data_output (str): Path to the data output directory.
-        dir_figures (str): Path to the figures output directory.
+        dir_output (str): Root output directory.
+        dir_data_output (str): Data output directory.
+        dir_figures (str): Figures output directory.
     """
 
-    # Configure logging for this function
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s'
-    )
-
-    # Clean-up previous output
-    logging.info("Cleaning previous output...")
+    logger.info("Cleaning previous output...")
     try:
         if os.path.exists(dir_output):
             shutil.rmtree(dir_output)
-            logging.info(f"Successfully removed previous output directory: {dir_output}")
+            logger.info("Cleaned up previous output directory %s!", dir_output)
         else:
-            logging.info(f"No previous output directory found at: {dir_output}")
-    except Exception as e:
-        logging.error(f"Failed to clean previous output: {e}", exc_info=True)
-        raise
+            logger.info("No previous output directory found at %s!", dir_output)
+    except Exception:
+        logger.exception("Failed to clean previous output!")
 
-    # Create necessary folders
-    logging.info("Creating necessary folders...")
+    logger.info("Creating necessary folders...")
     try:
         os.makedirs(dir_figures, exist_ok=True)
         os.makedirs(dir_data_output, exist_ok=True)
-        logging.info(f"Successfully created directories: {dir_output}, {dir_figures}, {dir_data_output}")
-    except Exception as e:
-        logging.error(f"Failed to create directories: {e}", exc_info=True)
-        raise
+        logger.info("Created output directories under %s!", dir_output)
+    except Exception:
+        logger.exception("Failed to create directories under %s!", dir_output)
