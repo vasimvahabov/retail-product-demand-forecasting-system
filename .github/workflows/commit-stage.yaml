@@ -26,7 +26,7 @@ jobs:
 
       - name: Run The app
         run: |
-          python src/main.py
+          python src/main.py --phases 1 2 3 4 5 6 --stores 1
 
       - name: Commit
         run: |

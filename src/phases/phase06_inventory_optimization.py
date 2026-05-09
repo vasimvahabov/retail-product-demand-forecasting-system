@@ -1,7 +1,7 @@
 """
-Generates inventory recommendations per store using 30-day demand forecasts.
+Generates and persists inventory recommendations per store using 30-day demand forecasts.
 
-Computes reorder point, safety stock, and recommended stock, then saves results.
+Computes reorder point, safety stock, and recommended stock, then persists results.
 """
 
 
@@ -11,37 +11,39 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-def run(forecasts, dir_data_output):
+def run(dir_data_output, stores_to_process):
     """
-    Creates inventory recommendations for each store based on 30-day demand forecasts.
+    Creates and persists inventory recommendations for each store based on 30-day demand forecasts.
 
     Args:
-        forecasts (dict): Store forecasts including 'forecast_30'.
         dir_data_output (str): Path to save inventory recommendations.
+        stores_to_process (list[int]): List of store IDs to process.
 
     Returns:
         None
     """
 
-    for store_id, store_forecast in forecasts.items():
+    for store_id in stores_to_process:
         logger.info("Starting inventory optimization for Store %s...", store_id)
 
         try:
-            # Extract and rename forecasted demand for the next 30 days
+            # Load 30-day forecast
             logger.info("Extracting 30-day demand forecast...")
-            forecast_30 = store_forecast.get("forecast_30")
 
-            # Check if next 30 Days demand forecast is None
-            if forecast_30 is None:
-                logger.warning("Store %s missing forecast_30 data!", store_id)
+            path_forecast_30 = os.path.join(
+                dir_data_output,
+                f"store_{store_id}_forecast_30.csv"
+            )
+
+            if not os.path.exists(path_forecast_30):
+                logger.warning("Store %s missing forecast_30 CSV!", store_id)
                 continue
 
-            future_demand = forecast_30[["ds", "yhat"]].rename(columns={
-                "ds": "Date",
-                "yhat": "Forecast_Demand"
-            })
-            logger.info("Next 30 Days Demand Forecast:\n%s", future_demand.head())
+            future_demand = pd.read_csv(path_forecast_30)
 
+            future_demand = future_demand.rename(columns={
+                "Forecast": "Forecast_Demand"
+            })
             # Calculate average daily demand
             future_demand["Forecast_Demand"] = pd.to_numeric(
                 future_demand["Forecast_Demand"],
@@ -74,7 +76,7 @@ def run(forecasts, dir_data_output):
             logger.info("Writing inventory recommendation to disk...")
             path_inventory = os.path.join(
                 dir_data_output,
-                f"store_{store_id}_inventory_recommendation.csv"
+                f"store_{store_id}_inventory.csv"
             )
             inventory_output.to_csv(path_inventory, index=False)
             logger.info("Inventory recommendation written to %s", path_inventory)

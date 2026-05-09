@@ -1,54 +1,54 @@
 """
 Processes cleaned dataset per store, engineers features, and generates visualizations.
 
-Returns store-level DataFrames and saves processed outputs.
+Persists store-level DataFrames and processed outputs.
 """
 
 import os
+import pandas as pd
 import logging
 import matplotlib.pyplot as plt
 
 logger = logging.getLogger(__name__)
 
-def run(df_cleaned, dir_data_output, dir_figures, stores_to_process):
+
+def run(dir_data_output, dir_figures, stores_to_process):
     """
-    Processes cleaned data for selected stores, generates features, and visualizes trends.
+    Processes and persists cleaned data for selected stores, generates features, and visualizes trends.
 
     Args:
-        df_cleaned (pd.DataFrame): Cleaned dataset.
         dir_data_output (str): Path to save cleaned store datasets.
         dir_figures (str): Path to save visualizations.
         stores_to_process (list[int]): List of store IDs to analyze.
 
     Returns:
-        dict: Dictionary of cleaned DataFrames for each store.
+        None
     """
 
-    df_cleaned_stores = {}
+    df_selected_stores = {}
 
     logger.info("Selecting stores to analyze: %s...", stores_to_process)
     try:
-        df_multi = df_cleaned[df_cleaned["Store"].isin(stores_to_process)]
-        logger.info("Stores selected: %s!", df_multi["Store"].unique().tolist())
+        df_cleaned = pd.read_csv(os.path.join(dir_data_output, "sales_data_cleaned.csv"))
+        df_selected_stores = df_cleaned[df_cleaned["Store"].isin(stores_to_process)]
+        logger.info("Stores selected: %s!", df_selected_stores["Store"].unique().tolist())
     except Exception:
         logger.exception("Failed to select stores!")
+        return None
 
-    for store_id in df_multi["Store"].unique():
+    os.makedirs(dir_figures, exist_ok=True)
+    for store_id in df_selected_stores["Store"].unique():
         logger.info("Processing Store %s...", store_id)
         try:
-            df_store = df_multi[df_multi["Store"] == store_id].copy()
+            df_store = df_selected_stores[df_selected_stores["Store"] == store_id].copy()
             logger.info("Dataset shape for Store %s: %s!", store_id, df_store.shape)
 
             logger.info("Sorting %s rows by Date...", df_store.shape[0])
             df_store.sort_values(by="Date", ascending=True, inplace=True)
+            df_store["Date"] = pd.to_datetime(df_store["Date"], errors="coerce")
             logger.info("%s rows sorted!", df_store.shape[0])
 
             logger.info("Cleaned dataset preview for Store %s:%s!", store_id, df_store.head())
-
-            path_store_output = os.path.join(dir_data_output, f"store_{store_id}_cleaned.csv")
-            df_store.to_csv(path_store_output, index=False)
-            df_cleaned_stores[store_id] = df_store
-            logger.info("Cleaned dataset written to: %s!", path_store_output)
 
             # Create time-based features
             logger.info("Creating time-based features...")
@@ -72,6 +72,14 @@ def run(df_cleaned, dir_data_output, dir_figures, stores_to_process):
             df_store["DayOfYear"] = df_store["Date"].dt.dayofyear
             df_store["IsWeekend"] = (df_store["DayOfWeek"] >= 6).astype(int)
 
+            # Write processed dataset to disk
+            path_store_output = os.path.join(
+                dir_data_output,
+                f"store_{store_id}_eda.csv"
+            )
+            df_store.to_csv(path_store_output, index=False)
+            logger.info("Processed dataset written to: %s!", path_store_output)
+
             # Visualize daily sales
             logger.info("Plotting daily sales...")
             plt.figure(figsize=(12, 6))
@@ -80,8 +88,8 @@ def run(df_cleaned, dir_data_output, dir_figures, stores_to_process):
             plt.xlabel("Date")
             plt.ylabel("Sales")
             plt.tight_layout()
-            plot_path = os.path.join(dir_figures, f"store_{store_id}_daily_sales.png")
-            plt.savefig(plot_path, dpi=300)
+            path_plot_daily_sales = os.path.join(dir_figures, f"store_{store_id}_daily_sales.png")
+            plt.savefig(path_plot_daily_sales, dpi=300)
             plt.close()
             logger.info("Daily sales plot saved!")
 
@@ -95,8 +103,8 @@ def run(df_cleaned, dir_data_output, dir_figures, stores_to_process):
             plt.ylabel("Average Sales")
             plt.tight_layout()
 
-            plot_path = os.path.join(dir_figures, f"store_{store_id}_monthly_sales.png")
-            plt.savefig(plot_path, dpi=300)
+            path_plot_monthly_sales = os.path.join(dir_figures, f"store_{store_id}_monthly_sales.png")
+            plt.savefig(path_plot_monthly_sales, dpi=300)
             plt.close()
             logger.info("Monthly sales trend plot saved!")
 
@@ -116,8 +124,8 @@ def run(df_cleaned, dir_data_output, dir_figures, stores_to_process):
             plt.xticks(rotation=45)
             plt.tight_layout()
 
-            plot_path = os.path.join(dir_figures, f"store_{store_id}_weekday_pattern.png")
-            plt.savefig(plot_path, dpi=300)
+            path_plot_weekday_pattern = os.path.join(dir_figures, f"store_{store_id}_weekday_pattern.png")
+            plt.savefig(path_plot_weekday_pattern, dpi=300)
             plt.close()
             logger.info("Weekly seasonality plot saved!")
 
@@ -133,8 +141,8 @@ def run(df_cleaned, dir_data_output, dir_figures, stores_to_process):
             plt.ylabel("Sales")
             plt.legend()
             plt.tight_layout()
-            plot_path = os.path.join(dir_figures, f"store_{store_id}_sales_peaks.png")
-            plt.savefig(plot_path, dpi=300)
+            path_plot_sales_peaks = os.path.join(dir_figures, f"store_{store_id}_sales_peaks.png")
+            plt.savefig(path_plot_sales_peaks, dpi=300)
             plt.close()
             logger.info("Sales peaks plot saved!")
 
@@ -142,4 +150,4 @@ def run(df_cleaned, dir_data_output, dir_figures, stores_to_process):
             logger.exception("Failed to process Store %s!", store_id)
             continue
 
-    return df_cleaned_stores
+    return None

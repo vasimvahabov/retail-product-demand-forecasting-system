@@ -1,3 +1,9 @@
+"""
+Setups output directories for the full pipeline, cleaning-up any previous builds.
+
+Processes cleaned dataset per store, engineers features, and generates visualizations.
+"""
+
 import os
 import shutil
 import logging
@@ -14,6 +20,9 @@ def run(dir_output, dir_data_output, dir_figures):
         dir_output (str): Root output directory.
         dir_data_output (str): Data output directory.
         dir_figures (str): Figures output directory.
+
+    Returns:
+        None
     """
 
     logger.info("Cleaning previous output...")
@@ -28,8 +37,9 @@ def run(dir_output, dir_data_output, dir_figures):
 
     logger.info("Creating necessary folders...")
     try:
-        os.makedirs(dir_figures, exist_ok=True)
-        os.makedirs(dir_data_output, exist_ok=True)
+        for path in [dir_output, dir_data_output, dir_figures]:
+            os.makedirs(path, exist_ok=True)
         logger.info("Created output directories under %s!", dir_output)
+        logger.info("Project setup phase completed successfully!")
     except Exception:
         logger.exception("Failed to create directories under %s!", dir_output)

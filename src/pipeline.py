@@ -21,6 +21,7 @@ import phases.phase06_inventory_optimization as inventory_optimization
 
 logger = logging.getLogger(__name__)
 
+
 def run_phase(name, func, *args, **kwargs):
     """
     Executes a pipeline phase with timing and logging.
@@ -49,11 +50,13 @@ def run_phase(name, func, *args, **kwargs):
         logger.exception("%s execution failed!", name)
         raise
 
-def run(path_train_input, path_store_input, dir_output, dir_data_output, dir_figures, stores_to_process):
+
+def run(phases_to_run, path_train_input, path_store_input, dir_output, dir_data_output, dir_figures, stores_to_process):
     """
     Executes full ML pipeline end-to-end.
 
     Args:
+        phases_to_run (list[int]): Phase IDs to run
         path_train_input (str): Path to training dataset
         path_store_input (str): Path to store data
         dir_output (str): Root output directory
@@ -65,56 +68,67 @@ def run(path_train_input, path_store_input, dir_output, dir_data_output, dir_fig
         None
     """
 
-    # Phase 1: Project Setup
-    run_phase(
-        "Phase 1: Project Setup",
-        project_setup.run,
-        dir_output,
-        dir_data_output,
-        dir_figures
-    )
+    for phase in phases_to_run:
+        match phase:
+            case 1:
+                # Phase 1: Project Setup
+                run_phase(
+                    "Phase 1: Project Setup",
+                    project_setup.run,
+                    dir_output,
+                    dir_data_output,
+                    dir_figures
+                )
 
-    # Phase 2: Data Cleaning
-    df_cleaned = run_phase(
-        "Phase 2: Data Cleaning",
-        data_cleaning.run,
-        dir_figures,
-        path_train_input,
-        path_store_input
-    )
-    logger.info("Cleaned DataFrame shape: %s!", df_cleaned.shape)
+            case 2:
+                # Phase 2: Data Cleaning
+                run_phase(
+                    "Phase 2: Data Cleaning",
+                    data_cleaning.run,
+                    path_train_input,
+                    path_store_input,
+                    dir_data_output,
+                    dir_figures
+                )
 
-    # Phase 3: EDA
-    df_cleaned_stores = run_phase(
-        "Phase 3: EDA",
-        eda.run,
-        df_cleaned,
-        dir_data_output,
-        dir_figures,
-        stores_to_process
-    )
+            case 3:
+                # Phase 3: EDA
+                run_phase(
+                    "Phase 3: EDA",
+                    eda.run,
+                    dir_data_output,
+                    dir_figures,
+                    stores_to_process
+                )
 
-    # Phase 4: Forecasting Models
-    forecasts = run_phase(
-        "Phase 4: Forecasting Models",
-        forecasting_models.run,
-        df_cleaned_stores,
-        dir_figures
-    )
+            case 4:
+                # Phase 4: Forecasting Models
+                run_phase(
+                    "Phase 4: Forecasting Models",
+                    forecasting_models.run,
+                    dir_data_output,
+                    dir_figures,
+                    stores_to_process
+                )
 
-    # Phase 5: Model Evaluation
-    run_phase(
-        "Phase 5: Model Evaluation",
-        model_evaluation.run,
-        forecasts,
-        dir_data_output,
-        dir_figures
-    )
+            case 5:
+                # Phase 5: Model Evaluation
+                run_phase(
+                    "Phase 5: Model Evaluation",
+                    model_evaluation.run,
+                    dir_data_output,
+                    dir_figures,
+                    stores_to_process
+                )
 
-    # Phase 6: Inventory Optimization
-    run_phase(
-        "Phase 6: Inventory Optimization",
-        inventory_optimization.run,
-        forecasts,
-        dir_data_output
-    )
+            case 6:
+                # Phase 6: Inventory Optimization
+                run_phase(
+                    "Phase 6: Inventory Optimization",
+                    inventory_optimization.run,
+                    dir_data_output,
+                    stores_to_process
+                )
+
+            case _:
+                logger.warning("Unknown phase %s!", phase)

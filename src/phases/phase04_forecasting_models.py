@@ -1,5 +1,5 @@
 """
-Trains forecasting models (ARIMA, Prophet, XGBoost, LSTM) for each store and generates forecasts.
+Trains forecasting models (ARIMA, Prophet, XGBoost, LSTM) for each store, generates and persists forecast results.
 """
 
 import os
@@ -18,25 +18,39 @@ from sklearn.preprocessing import MinMaxScaler
 logger = logging.getLogger(__name__)
 
 
-def run(df_cleaned_stores, dir_figures):
+def run(dir_data_output, dir_figures, stores_to_process):
     """
-    Train forecasting models and generate predictions per store.
+    Train forecasting models, generates and persists predictions per store.
 
     Args:
-        df_cleaned_stores (dict): Dictionary of cleaned DataFrames for each store.
+        dir_data_output (str): Path to persist processed datasets.
         dir_figures (str): Output path for visualizations.
+        stores_to_process (list[int]): List of store IDs to process.
 
     Returns:
-        dict: Dictionary of forecasts for each store.
+        None
     """
 
-    forecasts = {}
+    df_forecasts = {}
 
-    for store_id, df_store in df_cleaned_stores.items():
+    df_processed_stores = {
+        store_id: pd.read_csv(
+            os.path.join(dir_data_output, f"store_{store_id}_eda.csv")
+        )
+        for store_id in stores_to_process
+    }
+
+    # Ensure figures directory exists
+    os.makedirs(dir_figures, exist_ok=True)
+    for store_id, df_store in df_processed_stores.items():
         logger.info("Processing Store %s...", store_id)
         try:
+            logger.info(
+                "Splitting dataset into training (80%%) and testing (20%%) sets for Store %s...",
+                store_id
+            )
 
-            logger.info("Splitting dataset into training (80%) and testing (20%) sets...")
+            df_store["Date"] = pd.to_datetime(df_store["Date"])
             try:
                 split_index = int(len(df_store) * 0.8)
                 train_df = df_store.iloc[:split_index]
@@ -93,6 +107,7 @@ def run(df_cleaned_stores, dir_figures):
                 logger.exception("Failed on training ARIMA model on Store %s!", store_id)
 
             prophet_predictions = None
+            prophet_model = None
             logger.info("Training Prophet model...")
             try:
                 # Train Prophet model
@@ -183,6 +198,7 @@ def run(df_cleaned_stores, dir_figures):
 
             lstm_rmse = None
             lstm_mape = None
+            lstm_predictions = None
             logger.info("Training LSTM model...")
             try:
 
@@ -228,7 +244,8 @@ def run(df_cleaned_stores, dir_figures):
 
                 # Plot LSTM forecast
                 lstm_dates = df_store["Date"].iloc[
-                    split_lstm + seq_length:split_lstm + seq_length + len(lstm_predictions)]
+                    split_lstm + seq_length:split_lstm + seq_length + len(lstm_predictions)
+                ]
                 logger.info("Plotting LSTM forecast...")
                 plt.figure(figsize=(12, 6))
                 plt.plot(lstm_dates, y_test_unscaled, label="Actual")
@@ -259,20 +276,80 @@ def run(df_cleaned_stores, dir_figures):
                 except Exception:
                     logger.exception("Failed future forecast on Store %s!", store_id)
 
+            if forecast_30 is not None and not forecast_30.empty:
+                df_forecast_30 = forecast_30[["ds", "yhat"]].rename(
+                    columns={"ds": "Date", "yhat": "Forecast"}
+                )
+
+                path_forecast_30 = os.path.join(
+                    dir_data_output,
+                    f"store_{store_id}_forecast_30.csv"
+                )
+
+                df_forecast_30.to_csv(path_forecast_30, index=False)
+                logger.info("30-day forecast saved for Store %s", store_id)
+
             logger.info("Storing forecast model results...")
-            forecasts[store_id] = {
-                "forecast_arima": forecast_arima,
-                "xgb_predictions": xgb_predictions,
-                "prophet_predictions": prophet_predictions,
-                "y_test": y_test,
+            df_forecasts = pd.DataFrame({
+                "Date": test["Date"].values,
+                "Actual": y_test.values,
+
+                "ARIMA": (
+                    np.array(forecast_arima)
+                    if forecast_arima is not None
+                    else np.full(len(test), np.nan)
+                ),
+
+                "Prophet": (
+                    np.array(prophet_predictions)
+                    if prophet_predictions is not None
+                    else np.full(len(test), np.nan)
+                ),
+
+                "XGBoost": (
+                    np.array(xgb_predictions)
+                    if xgb_predictions is not None
+                    else np.full(len(test), np.nan)
+                ),
+            })
+
+            # Add LSTM predictions
+            df_forecasts["lstm_predictions"] = np.nan
+            if lstm_predictions is not None:
+
+                lstm_flat = lstm_predictions.flatten()
+                lstm_start = len(df_forecasts) - len(lstm_flat)
+
+                df_forecasts.loc[
+                    lstm_start:lstm_start + len(lstm_flat) - 1,
+                    "lstm_predictions"
+                ] = lstm_flat
+
+
+            path_forecast_csv = os.path.join(
+                dir_data_output,
+                f"store_{store_id}_forecasts.csv"
+            )
+
+            df_forecasts.to_csv(path_forecast_csv, index=False)
+            logger.info("Forecasts saved to %s", path_forecast_csv)
+
+            forecast_metrics = pd.DataFrame([{
+                "store_id": store_id,
                 "lstm_rmse": lstm_rmse,
                 "lstm_mape": lstm_mape,
-                "forecast_30": forecast_30,
-            }
+            }])
+
+            path_forecast_metrics = os.path.join(
+                dir_data_output,
+                f"store_{store_id}_forecast_metrics.csv"
+            )
+
+            forecast_metrics.to_csv(path_forecast_metrics, index=False)
+            logger.info("Metrics saved to %s", path_forecast_metrics)
+
             logger.info("All forecasting models trained for Store %s!", store_id)
 
         except Exception:
             logger.exception("Critical failure for Store %s!", store_id)
             continue
-
-    return forecasts

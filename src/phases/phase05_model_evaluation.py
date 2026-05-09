@@ -1,7 +1,7 @@
 """
 Compares forecasting models (ARIMA, Prophet, XGBoost, LSTM) per store using RMSE and MAPE.
 
-Generates comparison tables, selects best model, and saves plots and CSV outputs.
+Generates comparison tables, selects best model, and persists plots and CSV outputs.
 """
 
 import os
@@ -14,40 +14,45 @@ from sklearn.metrics import mean_squared_error
 logger = logging.getLogger(__name__)
 
 
-def run(forecasts, dir_data_output, dir_figures):
+def run(dir_data_output, dir_figures, stores_to_process):
     """
-    Evaluates and compares forecasting models for each store, then saves the results.
+    Evaluates and compares forecasting models for each store, then persists the results.
 
     Args:
-        forecasts (dict): Dictionary of forecasts for each store.
         dir_data_output (str): Path to save CSV results.
         dir_figures (str): Path to save plots.
+        stores_to_process (list[int]): List of store IDs to process.
 
     Returns:
         None
     """
 
-    for store_id, data in forecasts.items():
+    df_forecasts = {
+        store_id: pd.read_csv(
+            os.path.join(dir_data_output, f"store_{store_id}_forecasts.csv")
+        )
+        for store_id in stores_to_process
+    }
+
+    # Ensure figures directory exists
+    os.makedirs(dir_figures, exist_ok=True)
+    for store_id, data in df_forecasts.items():
         logger.info("Evaluating models for Store %s...", store_id)
 
+        metrics_path = os.path.join(
+            dir_data_output,
+            f"store_{store_id}_forecast_metrics.csv"
+        )
+
+        metrics = pd.read_csv(metrics_path)
+
         try:
-            forecast_arima = data.get("forecast_arima")
-            xgb_predictions = data.get("xgb_predictions")
-            prophet_predictions = data.get("prophet_predictions")
-            y_test = data.get("y_test")
-            lstm_rmse = data.get("lstm_rmse")
-            lstm_mape = data.get("lstm_mape")
-
-            required = {
-                "forecast_arima": forecast_arima,
-                "xgb_predictions": xgb_predictions,
-                "prophet_predictions": prophet_predictions,
-                "y_test": y_test,
-            }
-
-            missing = [k for k, v in required.items() if v is None]
-            if missing:
-                logger.warning("Store %s missing data: %s!", store_id, missing)
+            forecast_arima = data.get("ARIMA")
+            xgb_predictions = data.get("XGBoost")
+            prophet_predictions = data.get("Prophet")
+            y_test = data.get("Actual")
+            lstm_rmse = metrics.loc[0, "lstm_rmse"]
+            lstm_mape = metrics.loc[0, "lstm_mape"]
 
             # Define MAPE with zero-safe handling
             def mape(actual, predicted):
@@ -86,21 +91,25 @@ def run(forecasts, dir_data_output, dir_figures):
             logger.info("Model Performance Comparison:\n%s", results)
 
             # Plot and save RMSE comparison
-            logger.info("Plotting RMSE comparison...")
-            plt.figure(figsize=(8, 5))
             plot_df = results.dropna(subset=["RMSE"])
-            plt.bar(plot_df["Model"], plot_df["RMSE"], color='skyblue')
-            plt.title(f"Forecasting Model Comparison — RMSE (Store {store_id})")
-            plt.xlabel("Model")
-            plt.ylabel("RMSE")
-            plt.tight_layout()
-            path_mode_comparison = os.path.join(
-                dir_figures,
-                f"store_{store_id}_model_comparison.png"
-            )
-            plt.savefig(path_mode_comparison, dpi=300)
-            plt.close()
-            logger.info("RMSE comparison plot saved!")
+            if plot_df.empty:
+                logger.warning("No RMSE values to plot for Store %s", store_id)
+            else:
+                logger.info("Plotting RMSE comparison...")
+                plt.figure(figsize=(8, 5))
+
+                plt.bar(plot_df["Model"], plot_df["RMSE"], color='skyblue')
+                plt.title(f"Forecasting Model Comparison — RMSE (Store {store_id})")
+                plt.xlabel("Model")
+                plt.ylabel("RMSE")
+                plt.tight_layout()
+                path_mode_comparison = os.path.join(
+                    dir_figures,
+                    f"store_{store_id}_model_comparison.png"
+                )
+                plt.savefig(path_mode_comparison, dpi=300)
+                plt.close()
+                logger.info("RMSE comparison plot saved!")
 
             # Find the best model
             if results["RMSE"].dropna().empty:
@@ -113,7 +122,7 @@ def run(forecasts, dir_data_output, dir_figures):
             logger.info("Writing comparison results to disk...")
             path_comparison_result = os.path.join(
                 dir_data_output,
-                f"store_{store_id}_model_comparison.csv"
+                f"store_{store_id}_evaluation.csv"
             )
             results.to_csv(path_comparison_result, index=False)
             logger.info("Model comparison results written to %s! for Store %s", path_comparison_result, store_id)
