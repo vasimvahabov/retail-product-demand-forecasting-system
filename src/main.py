@@ -10,8 +10,8 @@ import argparse
 import logging
 from datetime import datetime
 
+# Paths/Global Configs
 workdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
 dir_log = os.path.join(workdir, "log")
 dir_input = os.path.join(workdir, "data")
 dir_output = os.path.join(workdir, "out")
@@ -19,6 +19,8 @@ dir_figures = os.path.join(dir_output, "figures")
 dir_data_output = os.path.join(dir_output, "data")
 path_train_input = os.path.join(dir_input, "train.csv")
 path_store_input = os.path.join(dir_input, "store.csv")
+
+# Logging Config
 
 os.makedirs(dir_log, exist_ok=True)
 run_id = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -35,81 +37,235 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Phase Config
+phase_help = {
+    1: "Project Setup",
+    2: "Data Cleaning",
+    3: "EDA",
+    4: "Forecasting",
+    5: "Evaluation",
+    6: "Inventory Optimization"
+}
+valid_phases = set(phase_help.keys())
+
+PHASE_ARTIFACTS = {
+    2: {
+        "data": ["sales_data_cleaned.csv"],
+        "figures": ["sales_distribution.png"],
+    },
+    3: {
+        "data": ["store_{store}_eda.csv"],
+        "figures": [
+            "store_{store}_daily_sales.png",
+            "store_{store}_monthly_sales.png",
+            "store_{store}_sales_peaks.png",
+            "store_{store}_weekday_pattern.png"
+        ],
+    },
+    4: {
+        "data": [
+            "store_{store}_forecasts.csv",
+            "store_{store}_forecast_30.csv",
+            "store_{store}_forecast_metrics.csv"
+        ],
+        "figures": [
+            "store_{store}_lstm_forecast.png",
+            "store_{store}_arima_forecast.png",
+            "store_{store}_prophet_forecast.png"
+        ],
+    },
+    5: {
+        "data": ["store_{store}_evaluation.csv"],
+        "figures": ["store_{store}_model_comparison.png"],
+    },
+    6: {
+        "data": ["store_{store}_inventory.csv"],
+    }
+}
+
+
+# Helper Functions
+def missing_pipeline_artifacts(stores):
+    missing_artifacts = []
+
+    for store in stores:
+        for phase in valid_phases:
+            if phase not in PHASE_ARTIFACTS:
+                continue
+
+            artifacts = PHASE_ARTIFACTS[phase]
+
+            for file in artifacts.get("data", []):
+                path = os.path.join(dir_data_output, file.format(store=store))
+                if not os.path.exists(path):
+                    missing_artifacts.append({
+                        "store": store,
+                        "phase": phase,
+                        "path": path,
+                        "type": "data"
+                    })
+
+            for file in artifacts.get("figures", []):
+                path = os.path.join(dir_figures, file.format(store=store))
+                if not os.path.exists(path):
+                    missing_artifacts.append({
+                        "store": store,
+                        "phase": phase,
+                        "path": path,
+                        "type": "figure"
+                    })
+
+    return missing_artifacts
+
+
 def stop_application(exit_code=1):
     logger.info("Stopping application...")
     sys.exit(exit_code)
 
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--stores",
-    type=int,
-    nargs="+",
-    default=[1],
-    help="List of Store IDs to process (e.g., --stores 1 2 3)"
-)
 
-parser.add_argument(
-    "--phases",
-    type=int,
-    nargs="+",
-    default=[1],
-    help="List of Phase IDs to run (e.g., --phases 1 2 3)"
-)
-cli_arguments, _ = parser.parse_known_args()
+def main():
+    # Commanline Argument Parser
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--stores",
+        type=int,
+        nargs="+",
+        default=[],
+        help="List of Store IDs to process (e.g., --stores 1 2 3)"
+    )
 
-stores_to_process = cli_arguments.stores
-logger.info("Stores to process %s!", stores_to_process)
+    parser.add_argument(
+        "--phases",
+        type=int,
+        nargs="+",
+        default=[],
+        help="List of Phase IDs to run (e.g., --phases 1 2 3)"
+    )
+    cli_arguments, _ = parser.parse_known_args()
+    stores_to_process = cli_arguments.stores
 
-if len(stores_to_process) == 0:
-    logger.error("Empty stores_to_process passed via commandline arguments!")
-    stop_application()
+    if not stores_to_process:
+        logger.error("No stores passed via commandline arguments!")
+        logger.info("Please provide at least one store ID via `--stores` flag (e.g., `--stores 1 2 3`)!")
+        stop_application()
+    else:
+        logger.info("Selected stores %s!", stores_to_process)
 
-try:
-    from streamlit.runtime.scriptrunner import get_script_run_ctx
-    STREAMLIT_AVAILABLE = True
-except ImportError:
-    STREAMLIT_AVAILABLE = False
-
-runtime_mode = (
-    "streamlit"
-    if STREAMLIT_AVAILABLE and get_script_run_ctx() is not None
-    else "python"
-)
-
-
-if runtime_mode == "python":
-    logger.info("Python execution detected!")
-
-    phases_to_run = cli_arguments.phases
-    logger.info("Phases to run %s!", phases_to_run)
-
+    # Runtime Mode detection (streamlit/python command)
     try:
-        import pipeline
+        from streamlit.runtime.scriptrunner import get_script_run_ctx
+        STREAMLIT_AVAILABLE = True
+    except ImportError:
+        STREAMLIT_AVAILABLE = False
 
-        logger.info("Starting pipeline execution...")
+    runtime_mode = (
+        "streamlit"
+        if STREAMLIT_AVAILABLE and get_script_run_ctx() is not None
+        else "python"
+    )
 
-        pipeline.run(
-            phases_to_run,
-            path_train_input,
-            path_store_input,
-            dir_output,
-            dir_data_output,
-            dir_figures,
+    # Python Execution Mode
+    if runtime_mode == "python":
+        logger.info("Python execution detected!")
+        phases_to_run = cli_arguments.phases
+
+        invalid_phases = [phase for phase in phases_to_run if phase not in valid_phases]
+        phases_to_run = [phase for phase in phases_to_run if phase in valid_phases]
+
+        if invalid_phases:
+            logger.warning("Ignoring invalid phases %s!", sorted(invalid_phases))
+            logger.info("Available phases: %s", list(valid_phases))
+
+        if not phases_to_run:
+            logger.error("No valid phases selected!")
+            logger.info("Available phases: %s", list(valid_phases))
+            stop_application()
+
+        logger.info("Selected phases %s!", phases_to_run)
+
+        missing_artifacts = missing_pipeline_artifacts(stores_to_process)
+
+        from collections import defaultdict
+
+        missing_artifacts_by_store = defaultdict(set)
+
+        max_phase_to_run = max(phases_to_run)
+        for artifact in missing_artifacts:
+            phase = artifact["phase"]
+            if phase not in phases_to_run and phase < max_phase_to_run:
+                missing_artifacts_by_store[artifact["store"]].add(artifact["phase"])
+
+        if missing_artifacts_by_store:
+            logger.error("Missing required previous phase artifacts for pipeline execution!")
+            for store, phases in missing_artifacts_by_store.items():
+                phases = sorted(phases)
+                logger.info(
+                    "Run `python src/main.py --stores %s --phases %s`",
+                    store,
+                    " ".join(map(str, phases))
+                )
+            stop_application()
+
+        try:
+            import pipeline
+
+            logger.info("Starting pipeline execution...")
+            pipeline.run(
+                phases_to_run,
+                path_train_input,
+                path_store_input,
+                dir_output,
+                dir_data_output,
+                dir_figures,
+                stores_to_process
+            )
+            logger.info("Pipeline execution completed!")
+
+        except FileNotFoundError:
+            logger.exception("Required file missing on pipeline execution!")
+            stop_application()
+
+        except Exception:
+            logger.exception("Pipeline execution failed!")
+            stop_application()
+
+        logger.info("Run `streamlit run src/main.py` to launch Streamlit dashboard!")
+
+
+    # Streamlit Execution Mode
+    else:
+        logger.info("Streamlit execution detected!")
+        missing_artifacts = missing_pipeline_artifacts(
             stores_to_process
         )
-        logger.info("Pipeline execution completed!")
 
-    except FileNotFoundError:
-        logger.exception("Required file missing on pipeline execution!")
-        stop_application()
+        if not missing_artifacts:
+            import dashboard
 
-    except Exception:
-        logger.exception("Pipeline execution failed!")
-        stop_application()
+            dashboard.launch(stores_to_process, dir_data_output, dir_figures)
+        else:
+            from collections import defaultdict
 
-    logger.info("Run `streamlit run src/main.py` to launch Streamlit dashboard!")
+            missing_artifacts_by_store = defaultdict(set)
 
-else:
-    import dashboard
-    logger.info("Streamlit execution detected!")
-    dashboard.launch(stores_to_process, dir_data_output, dir_figures)
+            for artifact in missing_artifacts:
+                missing_artifacts_by_store[artifact["store"]].add(artifact["phase"])
+
+            logger.error("Missing required pipeline outputs for dashboard!")
+            for store, phases in missing_artifacts_by_store.items():
+                phases = sorted(phases)
+
+                logger.info(
+                    "Run `python src/main.py --stores %s --phases %s`",
+                    store,
+                    ",".join(map(str, phases))
+                )
+
+            import streamlit as st
+            st.stop()
+
+            stop_application()
+
+
+if __name__ == "__main__":
+    main()

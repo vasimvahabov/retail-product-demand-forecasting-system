@@ -5,8 +5,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 def stop_application():
-    logger.info("Stopping Streamlit...")
+    logger.info("Stopping Streamlit application...")
     st.stop()
 
 @st.cache_data
@@ -98,88 +99,54 @@ def launch(stores_to_process, dir_data_output, dir_figures):
     }
 
     sales_distribution_fig = os.path.join(dir_figures, "sales_distribution.png")
-
     sales_data = load_csv(sales_file, "Sales Data")
-    if sales_data is None:
-        st.error("Failed to load Sales Data!")
-        stop_application()
-
     sales_data = sales_data[sales_data["Store"] == store_id].copy()
-
-    if "Date" in sales_data.columns:
-        sales_data["Date"] = pd.to_datetime(sales_data["Date"])
-    else:
-        st.error("Date column missing in Sales Data!")
-        stop_application()
-
     model_results = load_csv(model_file, "Model Results")
-    if model_results is None or model_results.empty:
-        st.error("Model results missing or empty!")
-        stop_application()
-
     forecast_data = load_csv(forecast_file, "Forecast Data")
-    if forecast_data is None or forecast_data.empty:
-        st.error("Forecast Data missing or empty!")
-        stop_application()
-
     inventory = load_csv(inventory_file, "Inventory Data")
-    if inventory is None or inventory.empty:
-        st.error("Inventory data missing or empty!")
-        stop_application()
-
-    if sales_data.empty:
-        logger.warning("Sales data is empty!")
-        st.warning("No sales data available!")
-        stop_application()
-
-    required_sales_cols = ["Date", "Sales"]
-    for col in required_sales_cols:
-        if col not in sales_data.columns:
-            logger.error("Missing column: %s!", col)
-            st.error(f"Missing column: {col}!")
-            stop_application()
 
     section = st.sidebar.radio(
         "Select Section",
         ["Sales Overview", "Forecast", "Model Comparison", "Inventory Recommendation"]
     )
 
-    if section == "Sales Overview":
-        st.header("Sales History")
-        st.subheader("Daily Sales")
-        show_figure(figures["daily_sales"], "Daily Sales")
-        st.subheader("Monthly Sales Trend")
+    match section:
+        case "Sales Overview":
+            st.header("Sales History")
+            st.subheader("Daily Sales")
+            show_figure(figures["daily_sales"], "Daily Sales")
+            st.subheader("Monthly Sales Trend")
 
-        show_figure(figures["monthly_sales"], "Monthly Sales")
+            show_figure(figures["monthly_sales"], "Monthly Sales")
 
-        st.subheader("Sales Peaks & Seasonality")
-        show_figure(figures["sales_peaks"], "Sales Peaks")
-        show_figure(figures["weekday_pattern"], "Weekday Pattern")
+            st.subheader("Sales Peaks & Seasonality")
+            show_figure(figures["sales_peaks"], "Sales Peaks")
+            show_figure(figures["weekday_pattern"], "Weekday Pattern")
 
-        st.subheader("Overall Sales Distribution")
-        show_figure(sales_distribution_fig, "Sales Distribution")
+            st.subheader("Overall Sales Distribution")
+            show_figure(sales_distribution_fig, "Sales Distribution")
 
-    elif section == "Forecast":
-        st.header("Forecasting Results")
+        case "Forecast":
+            st.header("Forecasting Results")
 
-        st.subheader("Forecast Data")
-        st.dataframe(forecast_data)
+            st.subheader("Forecast Data")
+            st.dataframe(forecast_data)
 
-        st.subheader("Prophet Forecast")
-        show_figure(figures["prophet_forecast"], "Prophet Forecast")
+            st.subheader("Prophet Forecast")
+            show_figure(figures["prophet_forecast"], "Prophet Forecast")
 
-        st.subheader("LSTM Forecast")
-        show_figure(figures["lstm_forecast"], "LSTM Forecast")
+            st.subheader("LSTM Forecast")
+            show_figure(figures["lstm_forecast"], "LSTM Forecast")
 
-    elif section == "Model Comparison":
-        st.header("Model Performance Comparison")
-        st.dataframe(model_results)
+        case "Model Comparison":
+            st.header("Model Performance Comparison")
+            st.dataframe(model_results)
 
-        st.subheader("Visual Comparison")
-        show_figure(figures["model_comparison"], "Model Comparison")
+            st.subheader("Visual Comparison")
+            show_figure(figures["model_comparison"], "Model Comparison")
 
-    elif section == "Inventory Recommendation":
-        st.header("Inventory Optimization")
-        st.dataframe(inventory)
+        case "Inventory Recommendation":
+            st.header("Inventory Optimization")
+            st.dataframe(inventory)
 
     st.sidebar.info("Retail Forecasting Project Dashboard")
