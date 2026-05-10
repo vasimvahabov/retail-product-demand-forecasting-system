@@ -162,6 +162,12 @@ def main():
         default=[],
         help="List of Phase IDs to run (e.g., --phases 1 2 3)"
     )
+
+    parser.add_argument(
+        "--all-phases",
+        action="store_true",
+        help="Execute all pipeline phases (same as --phases 1 2 3 4 5 6)"
+    )
     cli_arguments, _ = parser.parse_known_args()
 
     stores_to_process = cli_arguments.stores
@@ -188,44 +194,48 @@ def main():
     # Python Execution Mode
     if runtime_mode == "python":
         logger.info("Python execution detected!")
-        phases_to_run = cli_arguments.phases
 
-        invalid_phases = [phase for phase in phases_to_run if phase not in valid_phases]
-        phases_to_run = [phase for phase in phases_to_run if phase in valid_phases]
+        if cli_arguments.all_phases:
+            phases_to_run = sorted(phase_help.keys())
+        else:
+            phases_to_run = cli_arguments.phases
 
-        if invalid_phases:
-            logger.warning("Ignoring invalid phases %s!", sorted(invalid_phases))
-            logger.info("Available phases: %s", list(valid_phases))
+            invalid_phases = [phase for phase in phases_to_run if phase not in valid_phases]
+            phases_to_run = [phase for phase in phases_to_run if phase in valid_phases]
 
-        if not phases_to_run:
-            logger.error("No valid phases selected!")
-            logger.info("Available phases: %s", list(valid_phases))
-            stop_application()
+            if invalid_phases:
+                logger.warning("Ignoring invalid phases %s!", sorted(invalid_phases))
+                logger.info("Available phases: %s", list(valid_phases))
+
+            if not phases_to_run:
+                logger.error("No valid phases selected!")
+                logger.info("Available phases: %s", list(valid_phases))
+                stop_application()
+
+            missing_artifacts = missing_pipeline_artifacts(stores_to_process)
+
+            from collections import defaultdict
+
+            missing_artifacts_by_store = defaultdict(set)
+
+            max_phase_to_run = max(phases_to_run)
+            for artifact in missing_artifacts:
+                phase = artifact["phase"]
+                if phase not in phases_to_run and phase < max_phase_to_run:
+                    missing_artifacts_by_store[artifact["store"]].add(artifact["phase"])
+
+            if missing_artifacts_by_store:
+                logger.error("Missing required previous phase artifacts for pipeline execution!")
+                for store, phases in missing_artifacts_by_store.items():
+                    phases = sorted(phases)
+                    logger.info(
+                        "Run `python src/main.py --stores %s --phases %s`",
+                        store,
+                        " ".join(map(str, phases))
+                    )
+                stop_application()
 
         logger.info("Selected phases %s!", phases_to_run)
-
-        missing_artifacts = missing_pipeline_artifacts(stores_to_process)
-
-        from collections import defaultdict
-
-        missing_artifacts_by_store = defaultdict(set)
-
-        max_phase_to_run = max(phases_to_run)
-        for artifact in missing_artifacts:
-            phase = artifact["phase"]
-            if phase not in phases_to_run and phase < max_phase_to_run:
-                missing_artifacts_by_store[artifact["store"]].add(artifact["phase"])
-
-        if missing_artifacts_by_store:
-            logger.error("Missing required previous phase artifacts for pipeline execution!")
-            for store, phases in missing_artifacts_by_store.items():
-                phases = sorted(phases)
-                logger.info(
-                    "Run `python src/main.py --stores %s --phases %s`",
-                    store,
-                    " ".join(map(str, phases))
-                )
-            stop_application()
 
         try:
             import pipeline
@@ -281,9 +291,6 @@ def main():
                     store,
                     ",".join(map(str, phases))
                 )
-
-            import streamlit as st
-            st.stop()
 
             stop_application()
 
