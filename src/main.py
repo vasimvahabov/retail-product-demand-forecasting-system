@@ -36,6 +36,7 @@ logging.basicConfig(
     force=True
 )
 logger = logging.getLogger(__name__)
+logger.info("Execute `python src/main.py --help` to see details.")
 
 # Phase Config
 phase_help = {
@@ -125,7 +126,27 @@ def stop_application(exit_code=1):
 
 def main():
     # Commanline Argument Parser
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="""
+    Retail Product Demand Forecasting System
+    
+    Stores:
+      - Refer to `data/store.csv` for valid Store IDs (column 'Store').
+    
+    Phases:
+      - Available phases:
+          1: Project Setup
+          2: Data Cleaning
+          3: EDA
+          4: Forecasting
+          5: Evaluation
+          6: Inventory Optimization
+    
+    Full Example:
+      python src/main.py --stores 1 2 --phases 2 3
+    """,
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument(
         "--stores",
         type=int,
@@ -142,8 +163,8 @@ def main():
         help="List of Phase IDs to run (e.g., --phases 1 2 3)"
     )
     cli_arguments, _ = parser.parse_known_args()
-    stores_to_process = cli_arguments.stores
 
+    stores_to_process = cli_arguments.stores
     if not stores_to_process:
         logger.error("No stores passed via commandline arguments!")
         logger.info("Please provide at least one store ID via `--stores` flag (e.g., `--stores 1 2 3`)!")
