@@ -50,7 +50,7 @@ phase_help = {
 }
 valid_phases = set(phase_help.keys())
 
-PHASE_ARTIFACTS = {
+pipeline_artifacts = {
     2: {
         "data": ["sales_data_cleaned.csv"],
         "figures": ["sales_distribution.png"],
@@ -92,10 +92,10 @@ def missing_pipeline_artifacts(stores):
 
     for store in stores:
         for phase in valid_phases:
-            if phase not in PHASE_ARTIFACTS:
+            if phase not in pipeline_artifacts:
                 continue
 
-            artifacts = PHASE_ARTIFACTS[phase]
+            artifacts = pipeline_artifacts[phase]
 
             for file in artifacts.get("data", []):
                 path = os.path.join(dir_data_output, file.format(store=store))
@@ -278,8 +278,16 @@ def main():
 
         if not missing_artifacts:
             import dashboard
+            dashboard_artifacts = {
+                "data": [],
+                "figures": []
+            }
 
-            dashboard.launch(stores_to_process, dir_data_output, dir_figures)
+            for phase in pipeline_artifacts.values():
+                dashboard_artifacts["data"].extend(phase.get("data", []))
+                dashboard_artifacts["figures"].extend(phase.get("figures", []))
+
+            dashboard.launch(stores_to_process, dir_data_output, dir_figures, dashboard_artifacts)
         else:
             from collections import defaultdict
 
