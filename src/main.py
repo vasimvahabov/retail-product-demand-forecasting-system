@@ -6,6 +6,7 @@ Runs ML pipeline, loads outputs, and displays store-level analytics.
 
 import os
 import sys
+import pandas as pd
 import argparse
 import logging
 from datetime import datetime
@@ -176,6 +177,11 @@ def main():
         logger.info("Please provide at least one store ID via `--stores` flag (e.g., `--stores 1 2 3`)!")
         stop_application()
     else:
+        valid_stores = pd.read_csv(path_store_input)['Store'].tolist()
+        invalid_stores = [s for s in stores_to_process if s not in valid_stores]
+        if invalid_stores:
+            logger.error("Invalid store IDs detected %s!", invalid_stores)
+            stop_application()
         logger.info("Selected stores %s!", stores_to_process)
 
     # Runtime Mode detection (streamlit/python command)
