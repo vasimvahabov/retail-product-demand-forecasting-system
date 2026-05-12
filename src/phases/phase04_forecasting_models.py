@@ -84,7 +84,7 @@ def run(dir_data_output, dir_figures, stores_to_process):
                     .ffill()
                 )
 
-                arima_model = ARIMA(train_sales, order=(5, 1, 0))
+                arima_model = ARIMA(train_sales, order=(2, 1, 2))
                 arima_model_fit = arima_model.fit()
                 logger.info("ARIMA model trained!")
 
@@ -99,14 +99,27 @@ def run(dir_data_output, dir_figures, stores_to_process):
 
                 # Plot ARIMA forecast
                 logger.info("Saving ARIMA forecast plot...")
-                plt.figure(figsize=(12, 6))
-                plt.plot(train_sales.index, train_sales, label="Train")
-                plt.plot(y_test.index, y_test, label="Real")
-                plt.plot(y_test.index, forecast_arima, label="Forecast")
-                plt.title(f"ARIMA Forecast vs Actual for Store {store_id}")
-                plt.xlabel("Date")
-                plt.ylabel("Sales")
-                plt.legend()
+                plt.figure(figsize=(14, 7))
+
+                plt.plot(train_sales.index, train_sales,
+                         label="Training Sales", color="black", linewidth=1.5)
+
+                plt.plot(y_test.index, y_test,
+                         label="Actual Sales", color="royalblue", linewidth=2)
+
+                plt.plot(y_test.index, forecast_arima,
+                         label="ARIMA Forecast", color="darkorange",
+                         linestyle="--", linewidth=2)
+
+                plt.grid(True, linestyle="--", alpha=0.4)
+
+                plt.title(f"ARIMA Forecast vs Actual Sales for Store {store_id}",
+                          fontsize=16, fontweight="bold")
+
+                plt.xlabel("Date", fontsize=12)
+                plt.ylabel("Daily Sales (€)", fontsize=12)
+
+                plt.legend(frameon=True)
                 plt.tight_layout()
                 path_arima_forecast = os.path.join(dir_figures, f"store_{store_id}_arima_forecast.png")
                 plt.savefig(path_arima_forecast, dpi=300)
@@ -134,8 +147,54 @@ def run(dir_data_output, dir_figures, stores_to_process):
 
                 # Plot Prophet forecast
                 logger.info("Plotting Prophet forecast...")
-                prophet_model.plot(forecast_prophet)
-                plt.title(f"Prophet Forecast for Store {store_id}")
+
+                plt.figure(figsize=(14, 7))
+                plt.plot(
+                    train_df["Date"],
+                    train_df["Sales"],
+                    label="Training Sales",
+                    color="black",
+                    linewidth=1.5,
+                    alpha=0.7
+                )
+
+                plt.plot(
+                    test["Date"],
+                    test["Sales"],
+                    label="Actual Sales",
+                    color="royalblue",
+                    linewidth=2
+                )
+
+                plt.plot(
+                    test["Date"],
+                    prophet_predictions,
+                    label="Prophet Forecast",
+                    color="darkorange",
+                    linestyle="--",
+                    linewidth=2
+                )
+
+                plt.fill_between(
+                    test["Date"],
+                    forecast_prophet["yhat_lower"],
+                    forecast_prophet["yhat_upper"],
+                    color="orange",
+                    alpha=0.2,
+                    label="Confidence Interval"
+                )
+
+                plt.grid(True, linestyle="--", alpha=0.4)
+
+                plt.title(
+                    f"Prophet Forecast vs Actual Sales for Store {store_id}",
+                    fontsize=16,
+                    fontweight="bold"
+                )
+                plt.xlabel("Date", fontsize=12)
+                plt.ylabel("Daily Sales (€)", fontsize=12)
+                plt.xticks(rotation=45)
+                plt.legend(frameon=True)
                 plt.tight_layout()
                 path_prophet_forecast = os.path.join(dir_figures, f"store_{store_id}_prophet_forecast.png")
                 plt.savefig(path_prophet_forecast, dpi=300)
@@ -200,11 +259,65 @@ def run(dir_data_output, dir_figures, stores_to_process):
                 xgb_predictions = xgb_model.predict(X_test)
                 logger.info("XGBoost model trained!")
 
+                # Plot XGBoost forecast
+                logger.info("Plotting XGBoost forecast for Store %s...", store_id)
+
+                plt.figure(figsize=(14, 7))
+
+                plt.plot(
+                    train_df["Date"],
+                    y_train,
+                    label="Training Sales",
+                    color="black",
+                    linewidth=1.5
+                )
+
+                # Actual test values
+                plt.plot(
+                    test["Date"],
+                    y_test_xgb,
+                    label="Actual Sales",
+                    color="royalblue",
+                    linewidth=2
+                )
+
+                # XGBoost predictions
+                plt.plot(
+                    test["Date"],
+                    xgb_predictions,
+                    label="XGBoost Forecast",
+                    color="green",
+                    linestyle="--",
+                    linewidth=2
+                )
+
+                plt.grid(True, linestyle="--", alpha=0.4)
+
+                plt.title(
+                    f"XGBoost Forecast vs Actual Sales for Store {store_id}",
+                    fontsize=16,
+                    fontweight="bold"
+                )
+
+                plt.xlabel("Date", fontsize=12)
+                plt.ylabel("Daily Sales (€)", fontsize=12)
+
+                plt.legend(frameon=True)
+                plt.tight_layout()
+
+                path_xgb_forecast = os.path.join(
+                    dir_figures,
+                    f"store_{store_id}_xgboost_forecast.png"
+                )
+
+                plt.savefig(path_xgb_forecast, dpi=300)
+                plt.close()
+
+                logger.info("XGBoost forecast plot saved!")
+
             except Exception:
                 logger.exception("Failed on training XGBoost model on Store %s!", store_id)
 
-            lstm_rmse = None
-            lstm_mape = None
             lstm_predictions = None
             logger.info("Training LSTM model...")
             try:
@@ -278,12 +391,12 @@ def run(dir_data_output, dir_figures, stores_to_process):
                     split_lstm + seq_length:split_lstm + seq_length + len(lstm_predictions)
                 ]
                 logger.info("Plotting LSTM forecast...")
-                plt.figure(figsize=(12, 6))
-                plt.plot(lstm_dates, y_test_unscaled, label="Actual")
-                plt.plot(lstm_dates, lstm_predictions, label="LSTM Prediction")
-                plt.title(f"LSTM Forecast vs Actual for Store {store_id}")
+                plt.figure(figsize=(14, 7))
+                plt.plot(lstm_dates, y_test_unscaled.flatten(), label="Actual")
+                plt.plot(lstm_dates, lstm_predictions.flatten(), label="LSTM Forecast")
+                plt.title(f"LSTM Forecast vs Actual Sales for Store {store_id}")
                 plt.xlabel("Date")
-                plt.ylabel("Sales")
+                plt.ylabel("Daily Sales (€)")
                 plt.legend()
                 plt.tight_layout()
                 path_lstm_forecast = os.path.join(dir_figures, f"store_{store_id}_lstm_forecast.png")

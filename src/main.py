@@ -67,13 +67,13 @@ pipeline_artifacts = {
     4: {
         "data": [
             "store_{store}_forecasts.csv",
-            "store_{store}_forecast_30.csv",
-            "store_{store}_forecast_metrics.csv"
+            "store_{store}_forecast_30.csv"
         ],
         "figures": [
             "store_{store}_lstm_forecast.png",
             "store_{store}_arima_forecast.png",
-            "store_{store}_prophet_forecast.png"
+            "store_{store}_prophet_forecast.png",
+            "store_{store}_xgboost_forecast.png"
         ],
     },
     5: {
@@ -266,7 +266,10 @@ def main():
             logger.exception("Pipeline execution failed!")
             stop_application()
 
-        logger.info("Run `streamlit run src/main.py` to launch Streamlit dashboard!")
+        logger.info(
+            "Run `streamlit run src/main.py -- --stores %s` to launch Streamlit dashboard!",
+            " ".join(map(str, stores_to_process))
+        )
 
 
     # Streamlit Execution Mode
@@ -303,7 +306,7 @@ def main():
                 logger.info(
                     "Run `python src/main.py --stores %s --phases %s`",
                     store,
-                    ",".join(map(str, phases))
+                    " ".join(map(str, phases))
                 )
 
             stop_application()
