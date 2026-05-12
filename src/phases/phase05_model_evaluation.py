@@ -39,20 +39,12 @@ def run(dir_data_output, dir_figures, stores_to_process):
     for store_id, data in df_forecasts.items():
         logger.info("Evaluating models for Store %s...", store_id)
 
-        metrics_path = os.path.join(
-            dir_data_output,
-            f"store_{store_id}_forecast_metrics.csv"
-        )
-
-        metrics = pd.read_csv(metrics_path)
-
         try:
             forecast_arima = data.get("ARIMA")
             xgb_predictions = data.get("XGBoost")
             prophet_predictions = data.get("Prophet")
             y_test = data.get("Actual")
-            lstm_rmse = metrics.loc[0, "lstm_rmse"]
-            lstm_mape = metrics.loc[0, "lstm_mape"]
+            lstm_predictions = data.get("lstm_predictions")
 
             # Define MAPE with zero-safe handling
             def mape(actual, predicted):
@@ -61,6 +53,24 @@ def run(dir_data_output, dir_figures, stores_to_process):
                 actual = np.asarray(actual)
                 predicted = np.asarray(predicted)
                 return np.mean(np.abs((actual - predicted) / (actual + 1e-10))) * 100
+
+            if lstm_predictions is not None and y_test is not None:
+                valid_lstm = ~pd.isna(lstm_predictions)
+
+                lstm_rmse = np.sqrt(
+                    mean_squared_error(
+                        y_test[valid_lstm],
+                        lstm_predictions[valid_lstm]
+                    )
+                )
+
+                lstm_mape = mape(
+                    y_test[valid_lstm],
+                    lstm_predictions[valid_lstm]
+                )
+            else:
+                lstm_rmse = None
+                lstm_mape = None
 
             # Calculate performance metrics
             logger.info("Calculating performance metrics...")

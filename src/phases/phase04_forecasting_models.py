@@ -56,7 +56,10 @@ def run(dir_data_output, dir_figures, stores_to_process):
                 train_df = df_store.iloc[:split_index]
                 test = df_store.iloc[split_index:]
 
-                y_test = test["Sales"].copy()
+                y_test = (
+                    test.set_index("Date")
+                    .sort_index()["Sales"]
+                )
 
                 logger.info(
                     "Train size: %s, Test size: %s",
@@ -65,7 +68,10 @@ def run(dir_data_output, dir_figures, stores_to_process):
                 )
 
             except Exception:
-                logger.exception("Failed to split dataset into training (80%) and testing (20%) sets on Store %s!", store_id)
+                logger.exception(
+                    "Failed to split dataset into training (80%) and testing (20%) sets on Store %s!",
+                    store_id
+                )
                 continue
 
             forecast_arima = None
@@ -85,6 +91,10 @@ def run(dir_data_output, dir_figures, stores_to_process):
                 # Walk-Forward Validation for ARIMA
                 logger.info("Performing walk-forward validation for ARIMA...")
                 forecast_arima = arima_model_fit.forecast(steps=len(y_test))
+                forecast_arima = pd.Series(
+                    forecast_arima.values,
+                    index=y_test.index
+                )
                 logger.info("ARIMA walk-forward validation completed for %s periods!", len(y_test))
 
                 # Plot ARIMA forecast
@@ -138,11 +148,6 @@ def run(dir_data_output, dir_figures, stores_to_process):
             xgb_predictions = None
             logger.info("Training XGBoost model...")
             try:
-                # Create time features
-                df_store["Day"] = df_store["Date"].dt.day
-                df_store["Weekday"] = df_store["Weekday"].astype("category")
-                df_store["Weekday_code"] = df_store["Weekday"].cat.codes
-
                 features = [
                     "DayOfWeek",
                     "DayOfYear",
@@ -219,10 +224,40 @@ def run(dir_data_output, dir_figures, stores_to_process):
                     return np.array(X), np.array(y)
 
                 X_lstm, y_lstm = create_sequences(sales_scaled, seq_length)
+                logger.info(
+                    "LSTM sequence shapes | X=%s y=%s",
+                    X_lstm.shape,
+                    y_lstm.shape
+                )
+
+                if len(X_lstm) == 0 or len(y_lstm) == 0:
+                    logger.warning(
+                        "Skipping LSTM for Store %s: insufficient sequence data",
+                        store_id
+                    )
+                    continue
 
                 # Train-test split
                 split_lstm = int(len(X_lstm) * 0.8)
+                if split_lstm == 0:
+                    logger.warning(
+                        "Skipping LSTM for Store %s: empty training split",
+                        store_id
+                    )
+                    continue
+
+                if split_lstm >= len(X_lstm):
+                    logger.warning(
+                        "Skipping LSTM for Store %s: empty test split",
+                        store_id
+                    )
+                    continue
                 X_train_lstm, X_test_lstm = X_lstm[:split_lstm], X_lstm[split_lstm:]
+                logger.info(
+                    "LSTM train/test shapes | X_train=%s X_test=%s",
+                    X_train_lstm.shape,
+                    X_test_lstm.shape
+                )
                 y_train_lstm, y_test_lstm = y_lstm[:split_lstm], y_lstm[split_lstm:]
 
                 # Build and train LSTM model
@@ -237,12 +272,6 @@ def run(dir_data_output, dir_figures, stores_to_process):
                 lstm_predictions = model.predict(X_test_lstm)
                 lstm_predictions = scaler.inverse_transform(lstm_predictions)
                 y_test_unscaled = scaler.inverse_transform(y_test_lstm.reshape(-1, 1))
-
-                # Calculate metrics
-                lstm_rmse = np.sqrt(mean_squared_error(y_test_unscaled, lstm_predictions))
-                lstm_mape = np.mean(
-                    np.abs((y_test_unscaled.flatten() - lstm_predictions.flatten()) / y_test_unscaled.flatten())) * 100
-                logger.info("LSTM trained | RMSE: %.2f | MAPE: %.2f%%!", lstm_rmse, lstm_mape)
 
                 # Plot LSTM forecast
                 lstm_dates = df_store["Date"].iloc[
@@ -335,20 +364,6 @@ def run(dir_data_output, dir_figures, stores_to_process):
 
             df_forecasts.to_csv(path_forecast_csv, index=False)
             logger.info("Forecasts saved to %s", path_forecast_csv)
-
-            forecast_metrics = pd.DataFrame([{
-                "store_id": store_id,
-                "lstm_rmse": lstm_rmse,
-                "lstm_mape": lstm_mape,
-            }])
-
-            path_forecast_metrics = os.path.join(
-                dir_data_output,
-                f"store_{store_id}_forecast_metrics.csv"
-            )
-
-            forecast_metrics.to_csv(path_forecast_metrics, index=False)
-            logger.info("Metrics saved to %s", path_forecast_metrics)
 
             logger.info("All forecasting models trained for Store %s!", store_id)
 
