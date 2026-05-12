@@ -151,7 +151,9 @@ def run(dir_data_output, dir_figures, stores_to_process):
                     "IsStateHoliday",
                     "IsSchoolHoliday",
                     "CompetitionOpen",
-                    "CompetitionDistance"
+                    "CompetitionDistance",
+                    "Lag_1",
+                    "Lag_7",
                 ]
 
                 X = df_store[features]

@@ -71,6 +71,13 @@ def run(dir_data_output, dir_figures, stores_to_process):
             # Create additional time-based features
             df_store["DayOfYear"] = df_store["Date"].dt.dayofyear
             df_store["IsWeekend"] = (df_store["DayOfWeek"] >= 6).astype(int)
+            df_store["WeekdayNum"] = df_store["Date"].dt.weekday
+
+            logger.info("Creating lag features...")
+            df_store["Lag_1"] = df_store["Sales"].shift(1)
+            df_store["Lag_7"] = df_store["Sales"].shift(7)
+
+            df_store = df_store.bfill()
 
             # Write processed dataset to disk
             path_store_output = os.path.join(
