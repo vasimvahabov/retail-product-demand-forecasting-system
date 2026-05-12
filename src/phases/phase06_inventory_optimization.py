@@ -60,15 +60,17 @@ def run(dir_data_output, stores_to_process):
             reorder_point = avg_daily_demand * lead_time_days
             logger.info("Reorder Point: %.2f", reorder_point)
 
+            forecast_demand = future_demand["Forecast_Demand"].sum(skipna=True)
+
             # Recommended stock level
             safety_stock = avg_daily_demand * 3
-            recommended_stock = future_demand["Forecast_Demand"].sum() + safety_stock
+            recommended_stock = forecast_demand + safety_stock
             logger.info("Recommended Stock Level: %.2f", recommended_stock)
 
             # Save results
             inventory_output = pd.DataFrame({
                 "store_id": [store_id],
-                "forecast_30": [future_demand["Forecast_Demand"].sum()],
+                "forecast_30": [forecast_demand],
                 "recommended_stock": [recommended_stock],
                 "reorder_point": [reorder_point],
                 "safety_stock": [safety_stock]
