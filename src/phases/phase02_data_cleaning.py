@@ -66,23 +66,6 @@ def run(path_train_input, path_store_input, dir_data_output, dir_figures):
         logger.exception("Failed to convert 'Date' column!")
         return None
 
-    logger.info("Creating quick sales distribution plot...")
-    try:
-        plt.figure(figsize=(8, 5))
-        plt.hist(df["Sales"], bins=50)
-        plt.title("Sales Distribution")
-        plt.xlabel("Sales")
-        plt.ylabel("Frequency")
-
-        path_plot = os.path.join(dir_figures, "sales_distribution.png")
-        os.makedirs(dir_figures, exist_ok=True)
-        plt.savefig(path_plot, dpi=300, bbox_inches='tight')
-        plt.close()
-        logger.info("Quick sales distribution plot created!")
-    except Exception:
-        logger.exception("Failed to create sales distribution plot!")
-        return None
-
     try:
         logger.info("Removing rows where store is closed...")
 
@@ -112,6 +95,54 @@ def run(path_train_input, path_store_input, dir_data_output, dir_figures):
         logger.info("Missing values filled from %d to %d remaining!", missing_before, missing_after)
     except Exception:
         logger.exception("Failed to fill missing values!")
+        return None
+
+    logger.info("Creating sales distribution histogram (all stores, %d transactions)...", len(df))
+    try:
+
+        plt.figure(figsize=(10, 6))
+        plt.hist(
+            df["Sales"],
+            bins=50,
+            log=True,
+            edgecolor="black",
+            alpha=0.8
+        )
+        plt.title(
+            "Sales Distribution",
+            fontsize=16,
+            fontweight="bold"
+        )
+
+        plt.xlabel(
+            "Sales Amount (€)",
+            fontsize=13
+        )
+
+        plt.ylabel(
+            "Transactions",
+            fontsize=13
+        )
+        plt.grid(axis="y", alpha=0.3)
+
+        # Add explanatory text
+        plt.figtext(
+            0.5,
+            -0.02,
+            "Histogram showing the distribution of sales amounts in euros",
+            ha="center",
+            fontsize=10
+        )
+
+        plt.tight_layout()
+
+        path_plot = os.path.join(dir_figures, "sales_distribution.png")
+        os.makedirs(dir_figures, exist_ok=True)
+        plt.savefig(path_plot, dpi=300, bbox_inches='tight')
+        plt.close()
+        logger.info("Quick sales distribution plot created!")
+    except Exception:
+        logger.exception("Failed to create sales distribution plot!")
         return None
 
     logger.info("Cleaned DataFrame shape: %s!", df.shape)
