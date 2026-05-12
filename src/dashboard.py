@@ -63,22 +63,22 @@ def show_figure(path, name):
 
 
 def launch(stores_to_process, dir_data_output, dir_figures, dashboard_artifacts):
-    st.title("Retail Sales Forecasting & Inventory Optimization Dashboard")
+    st.title("Retail Product Demand Forecasting Dashboard")
 
-    st.write("Explore sales trends, forecasting results, Model Evaluation, and inventory recommendations.")
+    st.write("Explore sales trends, forecasts, model evaluation, and inventory")
 
     store_options = [f"Store {i}" for i in stores_to_process]
     store_selected = st.sidebar.selectbox("Select Store", store_options)
     store_id = int(store_selected.replace("Store ", ""))
 
-    csvs= {}
+    csvs = {}
     for csv_file in dashboard_artifacts.get("data", []):
         path = os.path.join(dir_data_output, csv_file.format(store=store_id))
         df = load_csv(path, csv_file)
         if df is not None:
             key = os.path.splitext(os.path.basename(csv_file))[0]
             if key.startswith("store_") and key.count("_") >= 2:
-                key = "_".join(key.split("_")[2:])  # keep everything after store id
+                key = "_".join(key.split("_")[2:])
             csvs[key] = df
 
     figures = {}
@@ -94,58 +94,181 @@ def launch(stores_to_process, dir_data_output, dir_figures, dashboard_artifacts)
         ["Sales Overview", "Forecast", "Model Evaluation", "Inventory Recommendation"]
     )
 
-
     match section:
         case "Sales Overview":
-            st.header("Sales History")
-            st.subheader("Daily Sales")
-            show_figure(figures.get("daily_sales"), "Daily Sales")
+            st.header("Sales Overview")
 
-            st.subheader("Monthly Sales Trend")
-            show_figure(figures.get("monthly_sales"), "Monthly Sales")
+            col_prophet, col_lstm = st.columns(2)
 
-            st.subheader("Sales Peaks")
-            show_figure(figures.get("sales_peaks"), "Sales Peaks")
+            with col_prophet:
+                st.subheader("Daily Sales")
+                show_figure(figures.get("daily_sales"), "Daily Sales")
 
-            st.subheader("Weekday Pattern")
-            show_figure(figures.get("weekday_pattern"), "Weekday Pattern")
+            with col_lstm:
+                st.subheader("Monthly Sales Trend")
+                show_figure(figures.get("monthly_sales"), "Monthly Sales")
 
-            st.subheader("Overall Sales Distribution")
+            col_arima, col_xgboost = st.columns(2)
+
+            with col_arima:
+                st.subheader("Sales Peaks")
+                show_figure(figures.get("sales_peaks"), "Sales Peaks")
+
+            with col_xgboost:
+                st.subheader("Weekday Pattern")
+                show_figure(figures.get("weekday_pattern"), "Weekday Pattern")
+
+            st.subheader("Sales Distribution")
             show_figure(figures.get("sales_distribution"), "Sales Distribution")
 
         case "Forecast":
             st.header("Forecasting Results")
 
-            st.subheader("Forecast Data")
-            st.dataframe(csvs.get("forecasts"))
+            tab_charts, tab_forecast_data = st.tabs([
+                "Forecast Charts",
+                "Forecast Data",
+            ])
 
-            st.subheader("Prophet Forecast")
-            show_figure(figures.get("prophet_forecast"), "Prophet Forecast")
+            # Forecast Charts Tab
+            with tab_charts:
 
-            st.subheader("LSTM Forecast")
-            show_figure(figures.get("lstm_forecast"), "LSTM Forecast")
+                col_prophet, col_lstm = st.columns(2)
 
-            with st.expander("Show ARIMA Forecast"):
-                show_figure(figures.get("arima_forecast"), "ARIMA Forecast")
+                with col_prophet:
+                    subheader_prophet = "Prophet Forecast"
+                    st.subheader(subheader_prophet)
+                    show_figure(figures.get("prophet_forecast"), subheader_prophet)
 
-            with st.expander("Show 30-Day Forecast Data"):
-                st.dataframe(csvs.get("forecast_30"))
+                with col_lstm:
+                    subheader_lstm = "LSTM Forecast"
+                    st.subheader(subheader_lstm)
+                    show_figure(figures.get("lstm_forecast"), subheader_lstm)
 
-            with st.expander("Show Forecast Metrics"):
-                st.table(csvs.get("forecast_metrics"))
 
-            with st.expander("Show EDA Data"):
-                st.dataframe(csvs.get("eda"))
+                col_arima, col_xgboost = st.columns(2)
+                with col_arima:
+                    subheader_arima = "ARIMA Forecast"
+                    st.subheader(subheader_arima)
+                    show_figure(figures.get("arima_forecast"), subheader_arima)
+
+                with col_xgboost:
+                    subheader_xgboost = "XGBoost Forecast"
+                    st.subheader(subheader_xgboost)
+                    show_figure(figures.get("xgboost_forecast"), subheader_xgboost)
+
+            # Forecast Data Tab
+            with tab_forecast_data:
+
+                st.subheader("Forecast Dataset")
+                st.dataframe(csvs.get("forecasts"), width='stretch')
+
+                st.subheader("30-Day Forecast")
+                st.dataframe(csvs.get("forecast_30"), width='stretch')
+
+                st.subheader("EDA Dataset")
+                st.dataframe(csvs.get("eda"), width='stretch')
 
         case "Model Evaluation":
-            st.header("Model Evaluation")
-            st.dataframe(csvs.get("evaluation"))
 
-            st.subheader("Visual Comparison")
-            show_figure(figures.get("model_comparison"), "Model Evaluation")
+            st.header("Model Evaluation")
+
+            evaluation_df = csvs.get("evaluation")
+
+            if evaluation_df is not None and not evaluation_df.empty:
+
+                best_model = evaluation_df.loc[
+                    evaluation_df["RMSE"].idxmin()
+                ]
+
+                col_prophet, col_lstm, col_arima = st.columns(3)
+
+                with col_prophet:
+                    st.metric(
+                        "Best Model",
+                        best_model["Model"]
+                    )
+
+                with col_lstm:
+                    st.metric(
+                        "Lowest RMSE",
+                        f"{best_model['RMSE']:,.2f}"
+                    )
+
+                with col_arima:
+                    st.metric(
+                        "Lowest MAPE",
+                        f"{best_model['MAPE']:.2f}%"
+                    )
+
+                st.dataframe(
+                    evaluation_df,
+                    width='stretch'
+                )
+
+                col_prophet, col_lstm = st.columns(2)
+
+                with col_prophet:
+                    subheader_mape = "MAPE Comparison"
+                    st.subheader(subheader_mape)
+
+                    show_figure(
+                        figures.get("model_comparison_mape"),
+                        subheader_mape
+                    )
+
+                with col_lstm:
+                    subheader_rmse = "RMSE Comparison"
+                    st.subheader(subheader_rmse)
+
+                    show_figure(
+                        figures.get("model_comparison_rmse"),
+                        subheader_rmse
+                    )
+
+            else:
+                st.warning("Evaluation data not available.")
 
         case "Inventory Recommendation":
-            st.header("Inventory Optimization")
-            st.dataframe(csvs.get("inventory"))
+
+            st.header("Inventory Recommendation")
+
+            inventory_df = csvs.get("inventory")
+
+            if inventory_df is not None and not inventory_df.empty:
+
+                row = inventory_df.iloc[0]
+
+                col_prophet, col_lstm = st.columns(2)
+
+                with col_prophet:
+                    st.metric(
+                        "30-Day Forecast",
+                        f"{row['forecast_30']:,.0f}"
+                    )
+
+                    st.metric(
+                        "Recommended Stock",
+                        f"{row['recommended_stock']:,.0f}"
+                    )
+
+                with col_lstm:
+                    st.metric(
+                        "Reorder Point",
+                        f"{row['reorder_point']:,.0f}"
+                    )
+
+                    st.metric(
+                        "Safety Stock",
+                        f"{row['safety_stock']:,.0f}"
+                    )
+
+                st.dataframe(
+                    inventory_df,
+                    width='stretch'
+                )
+
+            else:
+                st.warning("Inventory data not available.")
+
 
     st.sidebar.info("Retail Forecasting Project Dashboard")
