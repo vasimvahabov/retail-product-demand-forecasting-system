@@ -88,12 +88,30 @@ def run(dir_data_output, dir_figures, stores_to_process):
             logger.info("Processed dataset written to: %s!", path_store_output)
 
             # Visualize daily sales
-            logger.info("Plotting daily sales...")
+            logger.info("Plotting daily sales for Store %s...", store_id)
             plt.figure(figsize=(12, 6))
-            plt.plot(df_store["Date"], df_store["Sales"])
-            plt.title(f"Store {store_id}: Daily Sales Over Time")
-            plt.xlabel("Date")
-            plt.ylabel("Sales")
+            plt.plot(
+                df_store["Date"],
+                df_store["Sales"],
+                linewidth=1.5
+            )
+            plt.title(
+                f"Daily Sales for Store {store_id}",
+                fontsize=16,
+                fontweight="bold"
+            )
+
+            plt.xlabel(
+                "Date",
+                fontsize=13
+            )
+
+            plt.ylabel(
+                "Sales (€)",
+                fontsize=13
+            )
+
+            plt.grid(alpha=0.3)
             plt.tight_layout()
             path_plot_daily_sales = os.path.join(dir_figures, f"store_{store_id}_daily_sales.png")
             plt.savefig(path_plot_daily_sales, dpi=300)
@@ -102,12 +120,32 @@ def run(dir_data_output, dir_figures, stores_to_process):
 
             # Visualize monthly sales trend
             logger.info("Plotting monthly sales trend...")
-            monthly_sales = df_store.groupby("Month")["Sales"].mean()
+            monthly_sales = df_store.groupby("Month")["Sales"].sum()
             plt.figure(figsize=(10, 5))
-            plt.plot(monthly_sales.index, monthly_sales.values, marker="o")
-            plt.title(f"Store {store_id}: Average Monthly Sales")
-            plt.xlabel("Month")
-            plt.ylabel("Average Sales")
+            plt.plot(
+                monthly_sales.index,
+                monthly_sales.values,
+                marker="o",
+                linewidth=1.8
+            )
+
+            plt.title(
+                f"Monthly Sales for Store {store_id}",
+                fontsize=16,
+                fontweight="bold"
+            )
+
+            plt.xlabel(
+                "Month",
+                fontsize=13
+            )
+
+            plt.ylabel(
+                "Total Sales (€)",
+                fontsize=13
+            )
+
+            plt.grid(alpha=0.3)
             plt.tight_layout()
 
             path_plot_monthly_sales = os.path.join(dir_figures, f"store_{store_id}_monthly_sales.png")
@@ -116,7 +154,7 @@ def run(dir_data_output, dir_figures, stores_to_process):
             logger.info("Monthly sales trend plot saved!")
 
             # Visualize weekly seasonality
-            logger.info("Plotting weekly seasonality...")
+            logger.info("Plotting weekly sales seasonality for Store %s...", store_id)
             weekday_sales = df_store.groupby("Weekday")["Sales"].mean()
             weekday_order = [
                 "Monday", "Tuesday", "Wednesday",
@@ -125,9 +163,9 @@ def run(dir_data_output, dir_figures, stores_to_process):
             weekday_sales = weekday_sales.reindex(weekday_order)
             plt.figure(figsize=(10, 5))
             plt.bar(weekday_sales.index, weekday_sales.values)
-            plt.title(f"Store {store_id}: Average Sales by Weekday")
+            plt.title(f"Weekly Sales Seasonality (Day-of-Week Effect) for Store {store_id}")
             plt.xlabel("Day of Week")
-            plt.ylabel("Average Sales")
+            plt.ylabel("Average Sales (€)")
             plt.xticks(rotation=45)
             plt.tight_layout()
 
@@ -137,15 +175,15 @@ def run(dir_data_output, dir_figures, stores_to_process):
             logger.info("Weekly seasonality plot saved!")
 
             # Visualize sales peaks
-            logger.info("Detecting and plotting sales peaks...")
+            logger.info("Plotting sales peaks for Store %s...", store_id)
             threshold = df_store["Sales"].quantile(0.95)
             peaks = df_store[df_store["Sales"] >= threshold]
             plt.figure(figsize=(12, 6))
-            plt.plot(df_store["Date"], df_store["Sales"], label="Sales")
+            plt.plot(df_store["Date"], df_store["Sales"], label="Daily Sales")
             plt.scatter(peaks["Date"], peaks["Sales"], color="red", label="Peaks")
-            plt.title(f"Store {store_id}: Sales Peaks Detection")
+            plt.title(f"Sales Peaks for Store {store_id}")
             plt.xlabel("Date")
-            plt.ylabel("Sales")
+            plt.ylabel("Daily Sales (€)")
             plt.legend()
             plt.tight_layout()
             path_plot_sales_peaks = os.path.join(dir_figures, f"store_{store_id}_sales_peaks.png")
