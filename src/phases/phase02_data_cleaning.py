@@ -97,6 +97,9 @@ def run(path_train_input, path_store_input, dir_data_output, dir_figures):
         logger.info("Rows where the store was closed removed!")
         logger.info("Remaining rows after removing closed stores: %s", df.shape[0])
 
+        # Sort dataset based on Store and Date Columns
+        df = df.sort_values(["Store", "Date"])
+
     except Exception:
         logger.exception("Failed to perform data cleaning!")
         return None
