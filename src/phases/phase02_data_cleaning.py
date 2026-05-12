@@ -52,14 +52,6 @@ def run(path_train_input, path_store_input, dir_data_output, dir_figures):
     desc = df.describe().round(2)
     logger.info("Descriptive Statistics (summary):%s!", desc.to_string())
 
-    if "Date" in df.columns:
-        logger.info("Converting 'Date' column to datetime...")
-        try:
-            df["Date"] = pd.to_datetime(df["Date"])
-            logger.info("'Date' column converted to datetime!")
-        except Exception:
-            logger.exception("Failed to convert 'Date' column!")
-
     duplicates = df.duplicated().sum()
     if duplicates > 0:
         logger.info("Removing %d duplicate rows...", duplicates)
@@ -94,22 +86,20 @@ def run(path_train_input, path_store_input, dir_data_output, dir_figures):
     try:
         logger.info("Removing rows where store is closed...")
 
-        closed_stores = df[df["Open"] == 0].shape[0]
-        open_stores = df[df["Open"] == 1].shape[0]
+        open_clean = df["Open"].fillna(1)
+        closed_stores = (open_clean == 0).sum()
+        open_stores = (open_clean == 1).sum()
 
         logger.info("Closed stores: %s!", closed_stores)
         logger.info("Open stores: %s!", open_stores)
 
-        df = df[df["Open"] == 1]
+        df = df[open_clean == 1]
         logger.info("Rows where the store was closed removed!")
         logger.info("Remaining rows after removing closed stores: %s", df.shape[0])
 
     except Exception:
-        logger.exception("Failed to remove closed stores!")
+        logger.exception("Failed to perform data cleaning!")
         return None
-
-    missing = df.isnull().sum()
-    logger.info("Missing values per column: %s", missing)
 
     logger.info("Filling missing values using forward fill...")
     try:
