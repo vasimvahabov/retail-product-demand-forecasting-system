@@ -78,7 +78,10 @@ pipeline_artifacts = {
     },
     5: {
         "data": ["store_{store}_evaluation.csv"],
-        "figures": ["store_{store}_model_comparison.png"],
+        "figures": [
+            "store_{store}_model_comparison_rmse.png",
+            "store_{store}_model_comparison_mape.png",
+        ],
     },
     6: {
         "data": ["store_{store}_inventory.csv"],

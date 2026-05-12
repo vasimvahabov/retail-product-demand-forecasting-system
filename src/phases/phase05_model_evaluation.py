@@ -101,25 +101,58 @@ def run(dir_data_output, dir_figures, stores_to_process):
             logger.info("Model Performance Comparison:\n%s", results)
 
             # Plot and save RMSE comparison
-            plot_df = results.dropna(subset=["RMSE"])
-            if plot_df.empty:
+            plot_df_rsme = results.dropna(subset=["RMSE"])
+            if plot_df_rsme.empty:
                 logger.warning("No RMSE values to plot for Store %s", store_id)
-            else:
-                logger.info("Plotting RMSE comparison...")
+            if not plot_df_rsme.empty:
                 plt.figure(figsize=(8, 5))
+                bars = plt.bar(plot_df_rsme["Model"], plot_df_rsme["RMSE"], color='skyblue', edgecolor='black')
 
-                plt.bar(plot_df["Model"], plot_df["RMSE"], color='skyblue')
-                plt.title(f"Forecasting Model Comparison — RMSE (Store {store_id})")
-                plt.xlabel("Model")
-                plt.ylabel("RMSE")
+                for bar in bars:
+                    height = bar.get_height()
+                    plt.text(bar.get_x() + bar.get_width()/2, height + 0.01*height,
+                             f'{height:.2f}', ha='center', va='bottom', fontsize=9)
+
+                plt.title(f"Forecasting Model Comparison  for Store {store_id} — RMSE", fontsize=12)
+                plt.xlabel("Model", fontsize=10)
+                plt.ylabel("RMSE", fontsize=10)
+                plt.grid(axis='y', linestyle='--', alpha=0.7)
                 plt.tight_layout()
-                path_mode_comparison = os.path.join(
+
+                path_mode_comparison_mape = os.path.join(
                     dir_figures,
-                    f"store_{store_id}_model_comparison.png"
+                    f"store_{store_id}_model_comparison_rmse.png"
                 )
-                plt.savefig(path_mode_comparison, dpi=300)
+                plt.savefig(path_mode_comparison_mape, dpi=300)
                 plt.close()
                 logger.info("RMSE comparison plot saved!")
+
+            # Plot and save MAPE comparison
+            plot_df_mape = results.dropna(subset=["MAPE"])
+            if plot_df_mape.empty:
+                logger.warning("No MAPE values to plot for Store %s", store_id)
+            if not plot_df_mape.empty:
+                plt.figure(figsize=(8, 5))
+                bars = plt.bar(plot_df_mape["Model"], plot_df_mape["MAPE"], color='salmon')
+
+                for bar in bars:
+                    height = bar.get_height()
+                    plt.text(bar.get_x() + bar.get_width()/2, height + 0.01*height,
+                             f'{height:.2f}%', ha='center', va='bottom', fontsize=9)
+
+                plt.title(f"Forecasting Model Comparison  for Store {store_id} — MAPE", fontsize=12)
+                plt.xlabel("Model", fontsize=10)
+                plt.ylabel("MAPE", fontsize=10)
+                plt.grid(axis='y', linestyle='--', alpha=0.7)
+                plt.tight_layout()
+
+                path_mode_comparison_mape = os.path.join(
+                    dir_figures,
+                    f"store_{store_id}_model_comparison_mape.png"
+                )
+                plt.savefig(path_mode_comparison_mape, dpi=300)
+                plt.close()
+                logger.info("MAPE comparison plot saved!")
 
             # Find the best model
             if results["RMSE"].dropna().empty:
