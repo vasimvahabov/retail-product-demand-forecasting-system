@@ -324,7 +324,7 @@ def run(dir_data_output, dir_figures, stores_to_process):
 
                 # Scale sales
                 scaler = MinMaxScaler()
-                sales_scaled = scaler.fit_transform(train_df[["Sales"]])
+                sales_scaled = scaler.fit_transform(df_store[["Sales"]])
 
                 # Create sequences
                 seq_length = 30
@@ -351,8 +351,8 @@ def run(dir_data_output, dir_figures, stores_to_process):
                     continue
 
                 # Train-test split
-                split_lstm = int(len(X_lstm) * 0.8)
-                if split_lstm == 0:
+                split_lstm = split_index - seq_length
+                if split_lstm <= 0:
                     logger.warning(
                         "Skipping LSTM for Store %s: empty training split",
                         store_id
