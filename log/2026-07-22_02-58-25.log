@@ -1,0 +1,173 @@
+2026-07-22 02:58:25,121 | INFO | __main__ | Execute `python src/main.py --help` to see details.
+2026-07-22 02:58:25,128 | INFO | __main__ | Selected stores [1]!
+2026-07-22 02:58:26,999 | INFO | __main__ | Python execution detected!
+2026-07-22 02:58:26,999 | INFO | __main__ | Selected phases [1, 2, 3, 4, 5, 6]!
+2026-07-22 02:58:28,452 | INFO | matplotlib.font_manager | Failed to extract font properties from /usr/share/fonts/truetype/noto/NotoColorEmoji.ttf: Non-scalable fonts are not supported
+2026-07-22 02:58:28,857 | INFO | matplotlib.font_manager | generated new fontManager
+2026-07-22 02:58:31,907 | INFO | __main__ | Starting pipeline execution...
+2026-07-22 02:58:31,907 | INFO | pipeline | Starting Phase 1: Project Setup execution...
+2026-07-22 02:58:31,907 | INFO | phases.phase01_project_setup | Cleaning previous output...
+2026-07-22 02:58:31,907 | INFO | phases.phase01_project_setup | No previous output directory found at /home/runner/work/retail-product-demand-forecasting-system/retail-product-demand-forecasting-system/out!
+2026-07-22 02:58:31,907 | INFO | phases.phase01_project_setup | Creating necessary folders...
+2026-07-22 02:58:31,907 | INFO | phases.phase01_project_setup | Created output directories under /home/runner/work/retail-product-demand-forecasting-system/retail-product-demand-forecasting-system/out!
+2026-07-22 02:58:31,907 | INFO | phases.phase01_project_setup | Project setup phase completed successfully!
+2026-07-22 02:58:31,907 | INFO | pipeline | Phase 1: Project Setup execution completed in 0.00 seconds!
+2026-07-22 02:58:31,907 | INFO | pipeline | Starting Phase 2: Data Cleaning execution...
+2026-07-22 02:58:31,908 | INFO | phases.phase02_data_cleaning | Loading dataset...
+2026-07-22 02:58:32,487 | INFO | phases.phase02_data_cleaning | Dataset successfully loaded!
+2026-07-22 02:58:32,487 | INFO | phases.phase02_data_cleaning | Dataset Shape: 1017209 rows, 18 columns!
+2026-07-22 02:58:32,487 | INFO | phases.phase02_data_cleaning | Column Names: ['Store', 'DayOfWeek', 'Date', 'Sales', 'Customers', 'Open', 'Promo', 'StateHoliday', 'SchoolHoliday', 'StoreType', 'Assortment', 'CompetitionDistance', 'CompetitionOpenSinceMonth', 'CompetitionOpenSinceYear', 'Promo2', 'Promo2SinceWeek', 'Promo2SinceYear', 'PromoInterval']!
+2026-07-22 02:58:32,487 | INFO | phases.phase02_data_cleaning | Dataset info:Store                          int64
+DayOfWeek                      int64
+Date                             str
+Sales                          int64
+Customers                      int64
+Open                           int64
+Promo                          int64
+StateHoliday                     str
+SchoolHoliday                  int64
+StoreType                        str
+Assortment                       str
+CompetitionDistance          float64
+CompetitionOpenSinceMonth    float64
+CompetitionOpenSinceYear     float64
+Promo2                         int64
+Promo2SinceWeek              float64
+Promo2SinceYear              float64
+PromoInterval                    str
+dtype: object!
+2026-07-22 02:58:32,490 | INFO | phases.phase02_data_cleaning | First 5 rows:   Store  DayOfWeek  ... Promo2SinceYear    PromoInterval
+0      1          5  ...             NaN              NaN
+1      2          5  ...          2010.0  Jan,Apr,Jul,Oct
+2      3          5  ...          2011.0  Jan,Apr,Jul,Oct
+3      4          5  ...             NaN              NaN
+4      5          5  ...             NaN              NaN
+
+[5 rows x 18 columns]!
+2026-07-22 02:58:32,807 | INFO | phases.phase02_data_cleaning | Descriptive Statistics (summary):            Store  DayOfWeek       Sales   Customers        Open       Promo  SchoolHoliday  CompetitionDistance  CompetitionOpenSinceMonth  CompetitionOpenSinceYear     Promo2  Promo2SinceWeek  Promo2SinceYear
+count  1017209.00  1017209.0  1017209.00  1017209.00  1017209.00  1017209.00     1017209.00           1014567.00                  693861.00                 693861.00  1017209.0        509178.00        509178.00
+mean       558.43        4.0     5773.82      633.15        0.83        0.38           0.18              5430.09                       7.22                   2008.69        0.5            23.27          2011.75
+std        321.91        2.0     3849.93      464.41        0.38        0.49           0.38              7715.32                       3.21                      5.99        0.5            14.10             1.66
+min          1.00        1.0        0.00        0.00        0.00        0.00           0.00                20.00                       1.00                   1900.00        0.0             1.00          2009.00
+25%        280.00        2.0     3727.00      405.00        1.00        0.00           0.00               710.00                       4.00                   2006.00        0.0            13.00          2011.00
+50%        558.00        4.0     5744.00      609.00        1.00        0.00           0.00              2330.00                       8.00                   2010.00        1.0            22.00          2012.00
+75%        838.00        6.0     7856.00      837.00        1.00        1.00           0.00              6890.00                      10.00                   2013.00        1.0            37.00          2013.00
+max       1115.00        7.0    41551.00     7388.00        1.00        1.00           1.00             75860.00                      12.00                   2015.00        1.0            50.00          2015.00!
+2026-07-22 02:58:33,145 | INFO | phases.phase02_data_cleaning | Converting 'Date' column to datetime...
+2026-07-22 02:58:33,262 | INFO | phases.phase02_data_cleaning | 'Date' column converted to datetime!
+2026-07-22 02:58:33,262 | INFO | phases.phase02_data_cleaning | Removing rows where store is closed...
+2026-07-22 02:58:33,265 | INFO | phases.phase02_data_cleaning | Closed stores: 172817!
+2026-07-22 02:58:33,265 | INFO | phases.phase02_data_cleaning | Open stores: 844392!
+2026-07-22 02:58:33,360 | INFO | phases.phase02_data_cleaning | Rows where the store was closed removed!
+2026-07-22 02:58:33,360 | INFO | phases.phase02_data_cleaning | Remaining rows after removing closed stores: 844392
+2026-07-22 02:58:33,538 | INFO | phases.phase02_data_cleaning | Filling missing values using forward fill...
+2026-07-22 02:58:33,609 | INFO | phases.phase02_data_cleaning | Missing values filled from 1809345 to 2343 remaining!
+2026-07-22 02:58:33,610 | INFO | phases.phase02_data_cleaning | Creating sales distribution histogram (all stores, 844392 transactions)...
+2026-07-22 02:58:34,177 | INFO | phases.phase02_data_cleaning | Quick sales distribution plot created!
+2026-07-22 02:58:34,177 | INFO | phases.phase02_data_cleaning | Cleaned DataFrame shape: (844392, 18)!
+2026-07-22 02:58:38,276 | INFO | phases.phase02_data_cleaning | Cleaned dataset written to /home/runner/work/retail-product-demand-forecasting-system/retail-product-demand-forecasting-system/out/data/sales_data_cleaned.csv
+2026-07-22 02:58:38,277 | INFO | pipeline | Phase 2: Data Cleaning execution completed in 6.37 seconds!
+2026-07-22 02:58:38,277 | INFO | pipeline | Starting Phase 3: EDA execution...
+2026-07-22 02:58:38,277 | INFO | phases.phase03_eda | Selecting stores to analyze: [1]...
+2026-07-22 02:58:39,112 | INFO | phases.phase03_eda | Stores selected: [1]!
+2026-07-22 02:58:39,112 | INFO | phases.phase03_eda | Processing Store 1...
+2026-07-22 02:58:39,113 | INFO | phases.phase03_eda | Dataset shape for Store 1: (781, 18)!
+2026-07-22 02:58:39,113 | INFO | phases.phase03_eda | Sorting 781 rows by Date...
+2026-07-22 02:58:39,114 | INFO | phases.phase03_eda | 781 rows sorted!
+2026-07-22 02:58:39,115 | INFO | phases.phase03_eda | Cleaned dataset preview for Store 1:   Store  DayOfWeek       Date  ...  Promo2SinceWeek  Promo2SinceYear  PromoInterval
+0      1          3 2013-01-02  ...              NaN              NaN            NaN
+1      1          4 2013-01-03  ...              NaN              NaN            NaN
+2      1          5 2013-01-04  ...              NaN              NaN            NaN
+3      1          6 2013-01-05  ...              NaN              NaN            NaN
+4      1          1 2013-01-07  ...              NaN              NaN            NaN
+
+[5 rows x 18 columns]!
+2026-07-22 02:58:39,133 | INFO | phases.phase03_eda | Creating time-based features...
+2026-07-22 02:58:39,136 | INFO | phases.phase03_eda | Preview of new date features:        Date  Year  Month    Weekday
+0 2013-01-02  2013      1  Wednesday
+1 2013-01-03  2013      1   Thursday
+2 2013-01-04  2013      1     Friday
+3 2013-01-05  2013      1   Saturday
+4 2013-01-07  2013      1     Monday
+2026-07-22 02:58:39,145 | INFO | phases.phase03_eda | Creating lag features...
+2026-07-22 02:58:39,154 | INFO | phases.phase03_eda | Processed dataset written to: /home/runner/work/retail-product-demand-forecasting-system/retail-product-demand-forecasting-system/out/data/store_1_eda.csv!
+2026-07-22 02:58:39,154 | INFO | phases.phase03_eda | Plotting daily sales for Store 1...
+2026-07-22 02:58:39,545 | INFO | phases.phase03_eda | Daily sales plot saved!
+2026-07-22 02:58:39,545 | INFO | phases.phase03_eda | Plotting monthly sales trend...
+2026-07-22 02:58:39,802 | INFO | phases.phase03_eda | Monthly sales trend plot saved!
+2026-07-22 02:58:39,802 | INFO | phases.phase03_eda | Plotting weekly sales seasonality for Store 1...
+2026-07-22 02:58:39,809 | INFO | matplotlib.category | Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-07-22 02:58:39,810 | INFO | matplotlib.category | Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-07-22 02:58:40,040 | INFO | phases.phase03_eda | Weekly seasonality plot saved!
+2026-07-22 02:58:40,040 | INFO | phases.phase03_eda | Plotting sales peaks for Store 1...
+2026-07-22 02:58:40,638 | INFO | phases.phase03_eda | Sales peaks plot saved!
+2026-07-22 02:58:40,642 | INFO | pipeline | Phase 3: EDA execution completed in 2.37 seconds!
+2026-07-22 02:58:40,642 | INFO | pipeline | Starting Phase 4: Forecasting Models execution...
+2026-07-22 02:58:40,645 | INFO | phases.phase04_forecasting_models | Processing Store 1...
+2026-07-22 02:58:40,645 | INFO | phases.phase04_forecasting_models | Splitting dataset into training (80%) and testing (20%) sets for Store 1...
+2026-07-22 02:58:40,648 | INFO | phases.phase04_forecasting_models | Train size: 624, Test size: 157
+2026-07-22 02:58:40,648 | INFO | phases.phase04_forecasting_models | Training ARIMA model...
+2026-07-22 02:58:41,070 | INFO | phases.phase04_forecasting_models | ARIMA model trained!
+2026-07-22 02:58:41,070 | INFO | phases.phase04_forecasting_models | Performing walk-forward validation for ARIMA...
+2026-07-22 02:58:41,075 | INFO | phases.phase04_forecasting_models | ARIMA walk-forward validation completed for 157 periods!
+2026-07-22 02:58:41,076 | INFO | phases.phase04_forecasting_models | Saving ARIMA forecast plot...
+2026-07-22 02:58:41,617 | INFO | phases.phase04_forecasting_models | ARIMA forecast plot saved!
+2026-07-22 02:58:41,617 | INFO | phases.phase04_forecasting_models | Training Prophet model...
+2026-07-22 02:58:41,658 | INFO | prophet | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-07-22 02:58:41,696 | INFO | cmdstanpy | Chain [1] start processing
+2026-07-22 02:58:41,752 | INFO | cmdstanpy | Chain [1] done processing
+2026-07-22 02:58:41,754 | INFO | phases.phase04_forecasting_models | Prophet model trained!
+2026-07-22 02:58:41,754 | INFO | phases.phase04_forecasting_models | Generating Prophet forecast...
+2026-07-22 02:58:41,806 | INFO | phases.phase04_forecasting_models | Plotting Prophet forecast...
+2026-07-22 02:58:42,363 | INFO | phases.phase04_forecasting_models | Prophet forecast plot saved!
+2026-07-22 02:58:42,363 | INFO | phases.phase04_forecasting_models | Training XGBoost model...
+2026-07-22 02:58:42,365 | INFO | phases.phase04_forecasting_models | Training XGBoost on 624 samples, testing on 157 samples...
+2026-07-22 02:58:42,365 | INFO | phases.phase04_forecasting_models | Testing configuration: {'n_estimators': 50, 'max_depth': 3, 'learning_rate': 0.1}
+2026-07-22 02:58:42,404 | INFO | phases.phase04_forecasting_models | RMSE: 468.82
+2026-07-22 02:58:42,404 | INFO | phases.phase04_forecasting_models | Testing configuration: {'n_estimators': 100, 'max_depth': 5, 'learning_rate': 0.1}
+2026-07-22 02:58:42,445 | INFO | phases.phase04_forecasting_models | RMSE: 481.89
+2026-07-22 02:58:42,445 | INFO | phases.phase04_forecasting_models | Best configuration: {'n_estimators': 50, 'max_depth': 3, 'learning_rate': 0.1} with RMSE: 468.82
+2026-07-22 02:58:42,462 | INFO | phases.phase04_forecasting_models | XGBoost model trained!
+2026-07-22 02:58:42,462 | INFO | phases.phase04_forecasting_models | Plotting XGBoost forecast for Store 1...
+2026-07-22 02:58:42,989 | INFO | phases.phase04_forecasting_models | XGBoost forecast plot saved!
+2026-07-22 02:58:42,990 | INFO | phases.phase04_forecasting_models | Training LSTM model...
+2026-07-22 02:58:42,993 | INFO | phases.phase04_forecasting_models | LSTM sequence shapes | X=(751, 30, 1) y=(751, 1)
+2026-07-22 02:58:42,994 | INFO | phases.phase04_forecasting_models | LSTM train/test shapes | X_train=(594, 30, 1) X_test=(157, 30, 1)
+2026-07-22 02:58:45,485 | INFO | phases.phase04_forecasting_models | Plotting LSTM forecast...
+2026-07-22 02:58:45,965 | INFO | phases.phase04_forecasting_models | LSTM forecast plot saved!
+2026-07-22 02:58:45,966 | INFO | phases.phase04_forecasting_models | Predicting next 30 days demand using Prophet...
+2026-07-22 02:58:46,003 | INFO | phases.phase04_forecasting_models | 30-day forecast saved for Store 1
+2026-07-22 02:58:46,003 | INFO | phases.phase04_forecasting_models | Storing forecast model results...
+2026-07-22 02:58:46,006 | INFO | phases.phase04_forecasting_models | Forecasts saved to /home/runner/work/retail-product-demand-forecasting-system/retail-product-demand-forecasting-system/out/data/store_1_forecasts.csv
+2026-07-22 02:58:46,006 | INFO | phases.phase04_forecasting_models | All forecasting models trained for Store 1!
+2026-07-22 02:58:46,007 | INFO | pipeline | Phase 4: Forecasting Models execution completed in 5.36 seconds!
+2026-07-22 02:58:46,007 | INFO | pipeline | Starting Phase 5: Model Evaluation execution...
+2026-07-22 02:58:46,008 | INFO | phases.phase05_model_evaluation | Evaluating models for Store 1...
+2026-07-22 02:58:46,009 | INFO | phases.phase05_model_evaluation | Calculating performance metrics...
+2026-07-22 02:58:46,011 | INFO | phases.phase05_model_evaluation | Model Performance Comparison:
+     Model        RMSE       MAPE
+0    ARIMA  873.475537  17.493845
+1  Prophet  850.157177  16.396009
+2  XGBoost  468.824968   8.617996
+3     LSTM  795.705335  14.765100
+2026-07-22 02:58:46,215 | INFO | phases.phase05_model_evaluation | RMSE comparison plot saved!
+2026-07-22 02:58:46,426 | INFO | phases.phase05_model_evaluation | MAPE comparison plot saved!
+2026-07-22 02:58:46,427 | INFO | phases.phase05_model_evaluation | Best Model is XGBoost (RMSE=468.8249683321301)!
+2026-07-22 02:58:46,427 | INFO | phases.phase05_model_evaluation | Writing comparison results to disk...
+2026-07-22 02:58:46,427 | INFO | phases.phase05_model_evaluation | Model comparison results written to /home/runner/work/retail-product-demand-forecasting-system/retail-product-demand-forecasting-system/out/data/store_1_evaluation.csv! for Store 1
+2026-07-22 02:58:46,428 | INFO | phases.phase05_model_evaluation | All models evaluated, compared, and results persisted for Store 1!
+2026-07-22 02:58:46,428 | INFO | pipeline | Phase 5: Model Evaluation execution completed in 0.42 seconds!
+2026-07-22 02:58:46,428 | INFO | pipeline | Starting Phase 6: Inventory Optimization execution...
+2026-07-22 02:58:46,428 | INFO | phases.phase06_inventory_optimization | Starting inventory optimization for Store 1...
+2026-07-22 02:58:46,428 | INFO | phases.phase06_inventory_optimization | Extracting 30-day demand forecast...
+2026-07-22 02:58:46,430 | INFO | phases.phase06_inventory_optimization | Average Daily Demand: 4842.22
+2026-07-22 02:58:46,430 | INFO | phases.phase06_inventory_optimization | Reorder Point: 33895.54
+2026-07-22 02:58:46,430 | INFO | phases.phase06_inventory_optimization | Recommended Stock Level: 159793.26
+2026-07-22 02:58:46,430 | INFO | phases.phase06_inventory_optimization | Writing inventory recommendation to disk...
+2026-07-22 02:58:46,431 | INFO | phases.phase06_inventory_optimization | Inventory recommendation written to /home/runner/work/retail-product-demand-forecasting-system/retail-product-demand-forecasting-system/out/data/store_1_inventory.csv
+2026-07-22 02:58:46,431 | INFO | phases.phase06_inventory_optimization | Inventory Recommendation:
+   store_id    forecast_30  recommended_stock  reorder_point  safety_stock
+0         1  145266.598521      159793.258374   33895.539655  14526.659852
+2026-07-22 02:58:46,437 | INFO | pipeline | Phase 6: Inventory Optimization execution completed in 0.01 seconds!
+2026-07-22 02:58:46,437 | INFO | __main__ | Pipeline execution completed!
+2026-07-22 02:58:46,437 | INFO | __main__ | Run `streamlit run src/main.py -- --stores 1` to launch Streamlit dashboard!
