@@ -271,4 +271,4 @@ def launch(stores_to_process, dir_data_output, dir_figures, dashboard_artifacts)
                 st.warning("Inventory data not available.")
 
 
-    st.sidebar.info("Retail Forecasting Project Dashboard")
+    st.sidebar.info("Retail Produce Demand Forecasting Dashboard")
